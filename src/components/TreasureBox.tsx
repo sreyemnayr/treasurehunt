@@ -17,6 +17,7 @@ const TreasureBox: React.FC<TreasureBoxProps> = ({ player }) => {
         const selected = selectedTreasures.find((t) => t.id === treasure.id);
         return (
         <div
+        key={treasure.id}
         onClick={() => {
         
             if (selected) {
@@ -29,7 +30,7 @@ const TreasureBox: React.FC<TreasureBoxProps> = ({ player }) => {
         className={`h-16 w-16 p-1 m-1 border rounded cursor-move ${treasure.location === "island" ? "opacity-50" : ""} ${selected ? "bg-blue-500" : ""}`}
       >
         <Treasure
-          key={treasure.id}
+         
           treasure={treasure}
         />
       </div>

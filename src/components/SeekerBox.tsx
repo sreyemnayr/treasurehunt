@@ -46,6 +46,7 @@ const SeekerBox: React.FC<SeekerBoxProps> = ({ player }) => {
         const selected = selectedSeekers.find((t) => t.id === seeker.id);
         return (
         <div
+        key={seeker.id}
         onClick={() => {
         
             if (selected) {
@@ -58,7 +59,7 @@ const SeekerBox: React.FC<SeekerBoxProps> = ({ player }) => {
         className={`h-16 w-16 p-1 m-1 border rounded cursor-move ${selected ? "bg-blue-500" : ""}`}
       >
         <Seeker
-          key={seeker.id}
+          
           seeker={seeker}
         />
       </div>

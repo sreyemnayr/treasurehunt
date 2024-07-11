@@ -34,8 +34,8 @@ const HideTreasure: React.FC = () => {
         
             <div className={`flex flex-row justify-start gap-2`}>
             {islands.map((island) => (
-                <div className={`${activeMode !== island.mode ? "opacity-50" : ""}`}>
-                    <Island key={island.id} island={island} />
+                <div key={island.id} className={`${activeMode !== island.mode ? "opacity-50" : ""}`}>
+                    <Island island={island} />
                 </div>
             ))}
             </div>
