@@ -52,8 +52,10 @@ const HideTreasure: React.FC = () => {
                     <p>+/-: {plus_minus.toFixed(2)}%</p>
                     <p>Balance: {player.balance}</p>
                     <p>Treasures: {player.inventory.length}</p>
+                    <p>Treasures Hidden: {player.inventory.filter((treasure) => treasure.location == "island").length}</p>
                     <p>Treasure Value: {player.inventory.reduce((acc, treasure) => acc + treasure.value, 0)}</p>
                     <p>Seekers: {player.seekers.length}</p>
+                    <p>Seekers Deployed: {player.seekers.filter((seeker) => seeker.location == "island").length}</p>
                 </div>
                 )
             }

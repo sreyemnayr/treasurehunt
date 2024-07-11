@@ -423,27 +423,25 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     treasure.location = "player"
                     transferTreasureOwnership(treasure.id, treasure.owner, seeker.owner);
                     
-                } else {
-                    if(treasure){
-                        // we're just going to leave it there for now, I think
-                    }
-                    if(seeker){
-                        seeker.island = ""
-                        seeker.location = "player"
-                        seeker.energy += 1
-                        if(seeker.owner == activePlayer.id){
-                            setActivePlayer(prev => ({ ...prev, seekers: [
-                                ...prev.seekers.filter(s => s.id !== seeker.id),
-                                seeker
-                            ] }));
-                        } else {
-                            setPlayers(prev => prev.map(p => p.id === seeker.owner ? { ...p, seekers: [
-                                ...p.seekers.filter(s => s.id !== seeker.id),
-                                seeker
-                            ] } : p));
-                        }
+                } 
+                    
+                if(seeker){
+                    seeker.island = ""
+                    seeker.location = "player"
+                    seeker.energy += 1
+                    if(seeker.owner == activePlayer.id){
+                        setActivePlayer(prev => ({ ...prev, seekers: [
+                            ...prev.seekers.filter(s => s.id !== seeker.id),
+                            seeker
+                        ] }));
+                    } else {
+                        setPlayers(prev => prev.map(p => p.id === seeker.owner ? { ...p, seekers: [
+                            ...p.seekers.filter(s => s.id !== seeker.id),
+                            seeker
+                        ] } : p));
                     }
                 }
+                
             }
 
             // return all seekers
