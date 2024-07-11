@@ -136,6 +136,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
         const treasure = new TreasureObject(name, value, owner, "/img/treasure.png");
         setActivePlayer(prev => ({ ...prev, inventory: [...prev.inventory, treasure], balance: prev.balance - value }));
+        selectTreasure(treasure.id);
     }
 
     useEffect(() => {
