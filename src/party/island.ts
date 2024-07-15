@@ -250,7 +250,11 @@ export default class Server implements Party.Server {
     }
 
     island.treasures.push(...treasures)
-    player.inventory = player.inventory.filter(t => !treasure_ids.includes(t.id))
+    // player.inventory = player.inventory.filter(t => !treasure_ids.includes(t.id))
+    player.inventory = [
+      ...player.inventory.filter(t => !treasure_ids.includes(t.id)),
+      ...treasures
+    ]
 
     await this.room.storage.put("islands", this.islands);
     await this.room.storage.put("players", this.players);
@@ -368,7 +372,10 @@ export default class Server implements Party.Server {
     }
 
     island.seekers.push(...seekers)
-    player.seekers = player.seekers.filter(t => !seeker_ids.includes(t.id))
+    player.seekers = [
+      ...player.seekers.filter(t => !seeker_ids.includes(t.id)),
+      ...seekers
+    ]
     player.balance -= island.price * seekers.length
     island.balance += island.price * seekers.length
 

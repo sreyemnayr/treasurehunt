@@ -191,11 +191,16 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           if (message.type === "sync") {
             const data = message.data as FullSyncData
             setPlayers(data.players);
-            setIslands(data.islands);
+            setIslands(data.islands.map(i => {const io = new IslandObject(i.name, i.mode); io.id = i.id; io.seekers = i.seekers; io.treasures = i.treasures; io.balance = i.balance; return io}));
           }
           // after that, the server will send updates as they arrive
           if (message.type === "islandsync") {
-            const island = (message as IslandSyncMessage).data
+            const island_data = (message as IslandSyncMessage).data
+            const island = new IslandObject(island_data.name, island_data.mode); 
+            island.id = island_data.id; island.seekers = island_data.seekers; 
+            island.treasures = island_data.treasures; 
+            island.balance = island_data.balance; 
+            
             setIslands(prev => prev.map(i => i.id === island.id ? island : i))
           }
           if (message.type === "playersync") {
@@ -210,7 +215,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
             if (partial.islands) {
-                for (const island of partial.islands) {
+                for (const island_data of partial.islands) {
+                    const island = new IslandObject(island_data.name, island_data.mode); 
+                    island.id = island_data.id; island.seekers = island_data.seekers; 
+                    island.treasures = island_data.treasures; 
+                    island.balance = island_data.balance; 
+                    
                     setIslands(prev => prev.map(i => i.id === island.id ? island : i))
                 }
             }
@@ -488,6 +498,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
 
         }
+        console.log(players)
         
       }, [JSON.stringify(players)])
 
@@ -502,6 +513,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
             
         }
+        console.log(islands)
       }, [islands])
 
   return (
