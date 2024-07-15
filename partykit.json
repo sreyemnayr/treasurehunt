@@ -1,0 +1,13 @@
+{
+  "$schema": "https://www.partykit.io/schema.json",
+  "name": "treasurehunt-prototype-party",
+  "main": "src/party/main.ts",
+  "parties": {
+    "island": "src/party/island.ts",
+    "cursors": "src/party/cursors.ts"
+  },
+  "serve": {
+    "path": "src/party/public"
+  },
+  "compatibilityDate": "2024-07-12"
+}
