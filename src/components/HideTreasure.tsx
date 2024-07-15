@@ -4,10 +4,10 @@ import SeekerBox from './SeekerBox';
 import Island from './Island';
 import { TreasureObject, PlayerObject } from '@/lib/Types';
 import { useGameProvider } from '@/lib/Provider';
-import { Description, Field, Label, Switch, Select } from '@headlessui/react'
+import { Description, Field, Label, Switch, Select, Button } from '@headlessui/react'
 
 const HideTreasure: React.FC = () => {
-    const {activePlayer, islands, players, activeMode, updateActivePlayer, updateActiveMode} = useGameProvider();
+    const {activePlayer, islands, players, activeMode, updateActivePlayer, updateActiveMode, resetGame} = useGameProvider();
     
   return (
     <div className="w-full">
@@ -61,6 +61,7 @@ const HideTreasure: React.FC = () => {
             }
             )}
         </div>
+        <Button className="rounded bg-sky-600 py-2 px-4 text-sm text-white data-[hover]:bg-sky-500 data-[active]:bg-sky-700" onClick={resetGame}>Reset Game</Button>
     </div>
     );
 

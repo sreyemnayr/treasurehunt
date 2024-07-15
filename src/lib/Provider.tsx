@@ -1,7 +1,14 @@
 'use client';
 
+import CursorsProvider from '@/lib/CursorsProvider';
+
 import { DndProvider } from 'react-dnd';
 import { TouchBackend } from 'react-dnd-touch-backend';
+
+import usePartySocket from "partysocket/react";
+import PartySocket from "partysocket";
+
+import { useSession } from "next-auth/react";
 
 // Basic state provider for the whole app
 
@@ -42,7 +49,29 @@ import { TouchBackend } from 'react-dnd-touch-backend';
 
 
 import React, { ReactNode, useContext, useState, useEffect } from 'react';
-import { PlayerObject, TreasureObject, IslandObject, SeekerObject } from './Types';
+import { 
+    PlayerObject, 
+    TreasureObject, 
+    IslandObject, 
+    SeekerObject, 
+    BroadcastMessage, 
+    FullSyncData,
+    SyncMessage,
+    IslandSyncMessage,
+    PlayerSyncMessage,
+    PartialSyncMessage,
+    CreateTreasureMessage,
+    AddTreasuresToIslandMessage,
+    UpdateIslandModeMessage,
+    AddSeekersToIslandMessage,
+    ResolveIslandMessage,
+    ResetGameMessage
+} from './Types';
+
+import { PARTYKIT_HOST, PARTYKIT_URL } from "@/app/env";
+
+const party = "island";
+export const revalidate = 0;    
 
 function shuffle(array: any[]) {
     let currentIndex = array.length;
@@ -71,7 +100,7 @@ interface GameContextType {
     createTreasure: (name: string, value: number, owner: string) => void;
     updateActiveMode: (mode: 'hide' | 'seek' | 'inventory' | 'setup') => void;
     selectTreasure: (treasureId: string) => void;
-    removeTreasures: (treasureIds: string[]) => void;
+    // removeTreasures: (treasureIds: string[]) => void;
     deselectTreasure: (treasureId: string) => void;
     clearSelectedTreasures: () => void;
     updateActivePlayer: (playerId: string) => void;
@@ -83,6 +112,7 @@ interface GameContextType {
     clearSelectedSeekers: () => void;
     addSelectedSeekersToIsland: (islandId: string) => void;
     resolveIsland: (islandId: string) => void;
+    resetGame: () => void;
 
   }
 
@@ -96,7 +126,7 @@ const GameContext = React.createContext<GameContextType>({
     createTreasure: () => {},
     updateActiveMode: () => {},
     selectTreasure: () => {},
-    removeTreasures: () => {},
+    // removeTreasures: () => {},
     deselectTreasure: () => {},
     clearSelectedTreasures: () => {},
     updateActivePlayer: () => {},
@@ -107,7 +137,8 @@ const GameContext = React.createContext<GameContextType>({
     deselectSeeker: () => {},
     clearSelectedSeekers: () => {},
     addSelectedSeekersToIsland: () => {},
-    resolveIsland: () => {}
+    resolveIsland: () => {},
+    resetGame: () => {}
   });
 
 
@@ -120,111 +151,115 @@ const sampleSeekers = [
     new SeekerObject("Critter", "bronze", "player", "/img/critter.png"),
 ]
 
+
+const identify = async (socket: PartySocket) => {
+    // the ./auth route will authenticate the connection to the partykit room
+    const url = `${window.location.pathname}/auth?_pk=${socket._pk}`;
+    const req = await fetch(url, { method: "POST" });
+  
+    if (!req.ok) {
+      const res = await req.text();
+      console.error("Failed to authenticate connection to PartyKit room", res);
+    }
+  };
+
 export const GameProvider = ({ children }: { children: ReactNode }) => {
+
+    // const session = useSession();
 
     const [players, setPlayers] = useState<PlayerObject[]>([]);
     const [islands, setIslands] = useState<IslandObject[]>([]);
+    const [madeNewTreasure, setMadeNewTreasure] = useState(false);
+
+    const socket = usePartySocket({
+        host: PARTYKIT_HOST,
+        party,
+        room: "blast",
+        // onOpen(e) {
+        //   // identify user upon connection
+        //   if (session.status === "authenticated" && e.target) {
+        //     identify(e.target as PartySocket);
+        //     if (session?.data?.user) setUser(session.data.user as User);
+        //   }
+        // },
+        onMessage(event: MessageEvent<string>) {
+          const message = JSON.parse(event.data) as BroadcastMessage;
+          // upon connection, the server will send all messages in the room
+          if (message.type === "syncerror") {
+            console.log("syncerror", message.data)
+          }
+          if (message.type === "sync") {
+            const data = message.data as FullSyncData
+            setPlayers(data.players);
+            setIslands(data.islands);
+          }
+          // after that, the server will send updates as they arrive
+          if (message.type === "islandsync") {
+            const island = (message as IslandSyncMessage).data
+            setIslands(prev => prev.map(i => i.id === island.id ? island : i))
+          }
+          if (message.type === "playersync") {
+            const player = (message as PlayerSyncMessage).data
+            setPlayers(prev => prev.map(p => p.id === player.id ? player : p))
+          }
+          if (message.type === "partialsync") {
+            const partial = (message as PartialSyncMessage).data
+            if (partial.players) {
+                for (const player of partial.players) {
+                    setPlayers(prev => prev.map(p => p.id === player.id ? player : p))
+                }
+            }
+            if (partial.islands) {
+                for (const island of partial.islands) {
+                    setIslands(prev => prev.map(i => i.id === island.id ? island : i))
+                }
+            }
+          }
+        },
+      });
+
+    
     const [selectedTreasures, setSelectedTreasures] = useState<TreasureObject[]>([]);
     const [selectedSeekers, setSelectedSeekers] = useState<SeekerObject[]>([]);
     const [activePlayer, setActivePlayer] = useState<PlayerObject>(new PlayerObject(''));
     const [activeMode, setActiveMode] = useState<'hide' | 'seek' | 'inventory' | 'setup'>('hide');
+
+    const resetGame = () => {
+        setActivePlayer(new PlayerObject(''));
+        setIslands([]);
+        setPlayers([]);
+        socket.send(JSON.stringify({ method: "resetGame" } as ResetGameMessage));
+    }
 
     const createTreasure = (name: string, value: number, owner: string) => {
         if (activePlayer.balance < value) {
             console.log("Player does not have enough balance")
             return
         }
-        const treasure = new TreasureObject(name, value, owner, "/img/treasure.png");
-        setActivePlayer(prev => ({ ...prev, inventory: [...prev.inventory, treasure], balance: prev.balance - value }));
-        setSelectedTreasures(prev => [...prev, treasure]);
+        setMadeNewTreasure(true);
+        socket.send(JSON.stringify({ method: "createTreasure", args: { player_id: owner, value}} as CreateTreasureMessage));
+
     }
-
-    useEffect(() => {
-            setPlayers(()=>{
-                const player_one = new PlayerObject('Alice H.')
-                const player_two = new PlayerObject('Bob S.')
-                const player_three = new PlayerObject('Charlie H.')
-                const player_four = new PlayerObject('Dave S.')
-                const player_five = new PlayerObject('Eve H.')
-                const player_six = new PlayerObject('Frank S.')
-                const player_seven = new PlayerObject('Grace H.')
-                const player_eight = new PlayerObject('Helen S.')
-                const player_nine = new PlayerObject('Ivan H.')
-                const player_ten = new PlayerObject('John S.')
-                const player_eleven = new PlayerObject('Kelly H.')
-                const player_twelve = new PlayerObject('Lisa S.')
-                const player_thirteen = new PlayerObject('Mike H.')
-                const player_fourteen = new PlayerObject('Nancy S.')
-                const player_fifteen = new PlayerObject('Oliver H.')
-                const player_sixteen = new PlayerObject('Pam S.')
-                const player_seventeen = new PlayerObject('Quincy H.')
-                const player_eighteen = new PlayerObject('Rachel S.')
-                const player_nineteen = new PlayerObject('Steve H.')
-                const player_twenty = new PlayerObject('Tim S.')
-                const player_twentyone = new PlayerObject('Ursula H.')
-                const player_twentytwo = new PlayerObject('Victoria S.')
-                const player_twentythree = new PlayerObject('Wendy H.')
-                const player_twentyfour = new PlayerObject('Xander S.')
-                const player_twentyfive = new PlayerObject('Yvonne H.')
-                const player_twentysix = new PlayerObject('Zach S.')
-
-                const initial_players = [player_one, player_two, player_three, player_four, player_five, player_six, player_seven, player_eight, player_nine, player_ten, player_eleven, player_twelve, player_thirteen, player_fourteen, player_fifteen, player_sixteen, player_seventeen, player_eighteen, player_nineteen, player_twenty, player_twentyone, player_twentytwo, player_twentythree, player_twentyfour, player_twentyfive, player_twentysix]
-
-                initial_players.forEach(player => {
-                    player.balance = 100000
-                    // for (let i = 0; i < 10; i++) {
-                    // const value = Math.floor(Math.random() * (999 - 100) + 100);
-                    // const treasure = new TreasureObject(`Treasure ${i + 1}`, value, player.id, "/img/treasure.png");
-                    // player.inventory.push(treasure);
-                    // }
-                });
-
-                initial_players.forEach(player => {
-                    for (let i = 0; i < 20; i++) {
-                    const value = Math.floor(Math.random() * (999 - 100) + 100);
-                    const seeker = sampleSeekers[Math.floor(Math.random() * sampleSeekers.length)]
-                    const seekerCopy = new SeekerObject(`${seeker.name} #${value}`, seeker.tier, player.id, seeker.imageUrl);
-                    player.seekers.push(seekerCopy);
-                    }
-                });
-
-                setActivePlayer(player_one);
-                return initial_players
-            });
-
-            setIslands(()=>{
-                return Array.from({ length: 5 }, (_, i) => new IslandObject(`Island ${i + 1}`, 'hide'))
-            });
-
-            setActiveMode('hide');
-            setSelectedTreasures([]);
-        
-            // Assigning random treasures to players
-            
-          
-    }, []);
 
     const selectTreasure = (treasureId: string) => {
         if (!activePlayer) return
         const treasure = activePlayer.inventory.find(t => t.id === treasureId);
         if (treasure) {
-            console.log("found treasure")
             console.log(treasure)
             setSelectedTreasures(prev => [...prev, treasure]);
-          // this.activePlayer.inventory = this.activePlayer.inventory.filter(t => t.id !== treasureId);
         }
       }
     
-      const removeTreasures = (treasureIds: string[]) => {
-        setActivePlayer(prev => {
-            if (!prev) return new PlayerObject(''); // Ensure we handle the case where prev might be null
-            const new_player = {
-                ...prev,
-                inventory: prev.inventory.filter(t => !treasureIds.includes(t.id))
-            };
-            return new_player; // Explicitly return a PlayerObject
-        });
-      }
+    //   const removeTreasures = (treasureIds: string[]) => {
+    //     setActivePlayer(prev => {
+    //         if (!prev) return new PlayerObject(''); // Ensure we handle the case where prev might be null
+    //         const new_player = {
+    //             ...prev,
+    //             inventory: prev.inventory.filter(t => !treasureIds.includes(t.id))
+    //         };
+    //         return new_player; // Explicitly return a PlayerObject
+    //     });
+    //   }
     
       const deselectTreasure = (treasureId: string) => {
         setSelectedTreasures(prev => prev.filter(t => t.id !== treasureId));
@@ -244,31 +279,29 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     
       const addSelectedTreasuresToIsland = (islandId: string) => {
         if (!activePlayer) return
-        
-        const island = islands.find(i => i.id === islandId);
-        
 
-        if (selectedTreasures && island && island.mode === 'hide') {
-            const treasures = selectedTreasures.map(t => ({ ...t, island: island.id, location: "island" } as TreasureObject))
-            island?.treasures.push(...treasures)
-            
-            setIslands(prev => prev.map(i => i.id === islandId ? island : i));
-            setActivePlayer(prev => ({
-                ...prev,
-                inventory: [
-                    ...prev.inventory.filter(t => !treasures.map(t => t.id).includes(t.id)),
-                    ...treasures
-                ]
-            }))
-            // removeTreasures(selectedTreasures.map(t => t.id))
-            clearSelectedTreasures()
+        const island = islands.find(i => i.id === islandId);
+        if (!island) {
+            console.log(`Island with id ${islandId} not found`)
+            return
         }
+
+        if (island.mode !== 'hide') {
+            console.log(`Island with id ${islandId} is not in hide mode`)
+            return
+        }
+
+        socket.send(JSON.stringify({ method: "addTreasuresToIsland", args: { player_id: activePlayer.id, treasure_ids: selectedTreasures.map(t => t.id), island_id: islandId}} as AddTreasuresToIslandMessage));
+        clearSelectedTreasures()
+        
+        
       }
     
       const updateIslandMode = (islandId: string, mode: 'hide' | 'seek') => {
         const island = islands.find(i => i.id === islandId);
         if (island) {
           setIslands(prev => prev.map(i => i.id === islandId ? { ...i, mode: mode } as IslandObject : i));
+          socket.send(JSON.stringify({ method: "updateIslandMode", args: { island_id: islandId, mode: mode }} as UpdateIslandModeMessage));
         }
       }
 
@@ -278,6 +311,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         if (island) {
             island.mode = island.mode === 'hide' ? 'seek' : 'hide'
             setIslands(prev => prev.map(i => i.id === islandId ? island : i));
+            updateIslandMode(islandId, island.mode)
         }
       }
 
@@ -323,59 +357,61 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
 
             if (seekers) {
-                island?.seekers.push(...seekers);
-                island.balance += island.price * seekers.length
-                setIslands(prev => prev.map(i => i.id === islandId ? island : i));
-                setActivePlayer(prev => 
-                    (   {
-                            ...prev,
-                            balance: prev.balance - island.price * seekers.length,
-                            seekers: [
-                                ...prev.seekers.filter(s => !seekers.map(sk => sk.id).includes(s.id)),
-                                ...seekers
-                            ]
-                        } as PlayerObject));
+                // island?.seekers.push(...seekers);
+                // island.balance += island.price * seekers.length
+                // setIslands(prev => prev.map(i => i.id === islandId ? island : i));
+                // setActivePlayer(prev => 
+                //     (   {
+                //             ...prev,
+                //             balance: prev.balance - island.price * seekers.length,
+                //             seekers: [
+                //                 ...prev.seekers.filter(s => !seekers.map(sk => sk.id).includes(s.id)),
+                //                 ...seekers
+                //             ]
+                //         } as PlayerObject));
+
+                socket.send(JSON.stringify({ method: "addSeekersToIsland", args: { player_id: activePlayer.id, seeker_ids: selectedSeekers.map(s => s.id), island_id: islandId}} as AddSeekersToIslandMessage));
                 clearSelectedSeekers()
             }
             
         }
       }
 
-      const adjustPlayerBalance = (playerId: string, amount: number) => {
-        const player = players.find(p => p.id === playerId);
-        if (player) {
-            if (player.id == activePlayer.id) {
-                setActivePlayer(prev => ({ ...prev, balance: prev.balance + amount }));
-            } else {
-                setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, balance: p.balance + amount } : p));
-            }
-        }
-      }
+    //   const adjustPlayerBalance = (playerId: string, amount: number) => {
+    //     const player = players.find(p => p.id === playerId);
+    //     if (player) {
+    //         if (player.id == activePlayer.id) {
+    //             setActivePlayer(prev => ({ ...prev, balance: prev.balance + amount }));
+    //         } else {
+    //             setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, balance: p.balance + amount } : p));
+    //         }
+    //     }
+    //   }
 
-      const transferTreasureOwnership = (treasureId: string, fromPlayerId: string, toPlayerId: string) => {
-        const fromPlayer = players.find(p => p.id === fromPlayerId);
-        const toPlayer = players.find(p => p.id === toPlayerId);
+    //   const transferTreasureOwnership = (treasureId: string, fromPlayerId: string, toPlayerId: string) => {
+    //     const fromPlayer = players.find(p => p.id === fromPlayerId);
+    //     const toPlayer = players.find(p => p.id === toPlayerId);
         
-        if (fromPlayer && toPlayer) {
-            const treasure = fromPlayer.inventory.find(t => t.id === treasureId);
-            if (treasure) {
-                treasure.owner = toPlayer.id;
+    //     if (fromPlayer && toPlayer) {
+    //         const treasure = fromPlayer.inventory.find(t => t.id === treasureId);
+    //         if (treasure) {
+    //             treasure.owner = toPlayer.id;
                 
-                if (fromPlayer.id === activePlayer.id) {
-                    setActivePlayer(prev => ({ ...prev, inventory: prev.inventory.filter(t => t.id !== treasureId) }));
-                } else {
-                    setPlayers(prev => prev.map(p => p.id === fromPlayerId ? { ...p, inventory: p.inventory.filter(t => t.id !== treasureId) } : p));
-                }
+    //             if (fromPlayer.id === activePlayer.id) {
+    //                 setActivePlayer(prev => ({ ...prev, inventory: prev.inventory.filter(t => t.id !== treasureId) }));
+    //             } else {
+    //                 setPlayers(prev => prev.map(p => p.id === fromPlayerId ? { ...p, inventory: p.inventory.filter(t => t.id !== treasureId) } : p));
+    //             }
 
-                if(toPlayer.id === activePlayer.id) {
-                    setActivePlayer(prev => ({ ...prev, inventory: [...prev.inventory, treasure] }));
-                } else {
-                    setPlayers(prev => prev.map(p => p.id === toPlayerId ? { ...p, inventory: [...p.inventory, treasure] } : p));
-                }
+    //             if(toPlayer.id === activePlayer.id) {
+    //                 setActivePlayer(prev => ({ ...prev, inventory: [...prev.inventory, treasure] }));
+    //             } else {
+    //                 setPlayers(prev => prev.map(p => p.id === toPlayerId ? { ...p, inventory: [...p.inventory, treasure] } : p));
+    //             }
 
-            }
-        }
-      }
+    //         }
+    //     }
+    //   }
 
       const resolveIsland = (islandId: string) => {
         const island = islands.find(i => i.id === islandId);
@@ -384,70 +420,46 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         // the balance of the island is divided to the original owners of the treasures according to value-share
         
         if (island){
-            const treasures = island.treasures;
-            const total_value = island.value;
             
-            for(let i = 0; i < treasures.length; i++) {
-                const treasure = treasures[i];
-                const value_share = treasure.value / total_value;
-                const balance_share = Math.floor(island.balance * value_share);
-                adjustPlayerBalance(treasure.owner, balance_share);
-            }
+            socket.send(JSON.stringify({ method: "resolveIsland", args: { island_id: islandId }} as ResolveIslandMessage));
+            
+            // const treasures = island.treasures;
+            // const total_value = island.value;
+            
+            // for(let i = 0; i < treasures.length; i++) {
+            //     const treasure = treasures[i];
+            //     const value_share = treasure.value / total_value;
+            //     const balance_share = Math.floor(island.balance * value_share);
+            //     adjustPlayerBalance(treasure.owner, balance_share);
+            // }
 
-            // Give each treasure 1% more value than before
-            for(let i = 0; i < treasures.length; i++) {
-                const treasure = treasures[i];
-                treasure.value = Math.ceil(treasure.value * 1.01);
-            }
+            // // Give each treasure 1% more value than before
+            // for(let i = 0; i < treasures.length; i++) {
+            //     const treasure = treasures[i];
+            //     treasure.value = Math.ceil(treasure.value * 1.01);
+            // }
             
         
         
         // scramble the treasures in a list of island.size length (fill in with nulls)
         // scramble the seekers in a list of island.size length (fill in with nulls)
 
-            const scrambled_treasures: (TreasureObject|null)[] = Array.from({ length: island.size }, () => null);
-            const scrambled_seekers: (SeekerObject|null)[] = Array.from({ length: island.size }, () => null);
+            // const scrambled_treasures: (TreasureObject|null)[] = Array.from({ length: island.size }, () => null);
+            // const scrambled_seekers: (SeekerObject|null)[] = Array.from({ length: island.size }, () => null);
 
-            for(let i = 0; i < island.size; i++) {
-                scrambled_treasures[i] = treasures[i];
-                scrambled_seekers[i] = island.seekers[i];
-            }
-            shuffle(scrambled_treasures);
-            shuffle(scrambled_seekers);
+            // for(let i = 0; i < island.size; i++) {
+            //     scrambled_treasures[i] = treasures[i];
+            //     scrambled_seekers[i] = island.seekers[i];
+            // }
+            // shuffle(scrambled_treasures);
+            // shuffle(scrambled_seekers);
 
-            for(let i = 0; i < island.size; i++) {
-                const treasure = scrambled_treasures[i];
-                const seeker = scrambled_seekers[i];
-                if(treasure && seeker) {
-                    treasure.island = ""
-                    treasure.location = "player"
-                    transferTreasureOwnership(treasure.id, treasure.owner, seeker.owner);
-                    
-                } 
-                    
-                if(seeker){
-                    seeker.island = ""
-                    seeker.location = "player"
-                    seeker.energy += 1
-                    if(seeker.owner == activePlayer.id){
-                        setActivePlayer(prev => ({ ...prev, seekers: [
-                            ...prev.seekers.filter(s => s.id !== seeker.id),
-                            seeker
-                        ] }));
-                    } else {
-                        setPlayers(prev => prev.map(p => p.id === seeker.owner ? { ...p, seekers: [
-                            ...p.seekers.filter(s => s.id !== seeker.id),
-                            seeker
-                        ] } : p));
-                    }
-                }
-                
-            }
+            
 
             // return all seekers
-            island.seekers = []
-            island.treasures = treasures.filter(t => t.location == "island")
-            setIslands(prev => prev.map(i => i.id === island.id ? island : i));
+            // island.seekers = []
+            // island.treasures = treasures.filter(t => t.location == "island")
+            // setIslands(prev => prev.map(i => i.id === island.id ? island : i));
 
         
 
@@ -455,11 +467,33 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
       
         }
-        
-
+       
       useEffect(()=>{
-        setPlayers(prev => prev.map(p => p.id === activePlayer.id ? activePlayer : p))
-      }, [JSON.stringify(activePlayer)])
+        const new_active_player = players.find(p => p.id === activePlayer.id)
+
+        if(!new_active_player && players.length > 0){
+            setActivePlayer(players?.[Math.floor(Math.random() * players.length)])
+        } else if (new_active_player && JSON.stringify(activePlayer) != JSON.stringify(new_active_player)) {
+            
+            const existing_treasures = activePlayer.inventory.map(t => t.id)
+            const new_treasures = new_active_player?.inventory.filter(t => !existing_treasures.includes(t.id))
+            
+            if (new_active_player && JSON.stringify(activePlayer) != JSON.stringify(new_active_player)) {
+                setActivePlayer(new_active_player)
+            }
+            if (new_treasures && madeNewTreasure) {
+                setMadeNewTreasure(false);
+                setSelectedTreasures(prev => [...prev, ...new_treasures])
+                
+            }
+
+        }
+        
+      }, [JSON.stringify(players)])
+
+    //   useEffect(()=>{
+    //     setPlayers(prev => prev.map(p => p.id === activePlayer.id ? activePlayer : p))
+    //   }, [JSON.stringify(activePlayer)])
 
       useEffect(()=>{
         for (let i = 0; i < islands.length; i++) {
@@ -472,31 +506,35 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <DndProvider backend={TouchBackend}>
-        <GameContext.Provider value={{
-            players,
-            islands,
-            selectedTreasures,
-            selectedSeekers,
-            activePlayer,
-            activeMode,
-            createTreasure,
-            updateActiveMode,
-            selectTreasure,
-            removeTreasures,
-            deselectTreasure,
-            clearSelectedTreasures,
-            updateActivePlayer,
-            addSelectedTreasuresToIsland,
-            updateIslandMode,
-            toggleIslandMode,
-            selectSeeker,
-            deselectSeeker,
-            clearSelectedSeekers,
-            addSelectedSeekersToIsland,
-            resolveIsland
-             }}>
-        {children}
-        </GameContext.Provider>
+        <CursorsProvider>
+            <GameContext.Provider value={{
+                players,
+                islands,
+                selectedTreasures,
+                selectedSeekers,
+                activePlayer,
+                activeMode,
+                createTreasure,
+                updateActiveMode,
+                selectTreasure,
+                // removeTreasures,
+                deselectTreasure,
+                clearSelectedTreasures,
+                updateActivePlayer,
+                addSelectedTreasuresToIsland,
+                updateIslandMode,
+                toggleIslandMode,
+                selectSeeker,
+                deselectSeeker,
+                clearSelectedSeekers,
+                addSelectedSeekersToIsland,
+                resolveIsland,
+                resetGame
+                }}
+            >
+                {children}
+            </GameContext.Provider>
+        </CursorsProvider>
     </DndProvider>
   );
 };
