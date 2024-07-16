@@ -376,7 +376,8 @@ export default class Server implements Party.Server {
       ...player.seekers.filter(t => !seeker_ids.includes(t.id)),
       ...seekers
     ]
-    player.balance -= island.price * seekers.length
+    await this.adjustPlayerBalance(player.id, -island.price * seekers.length)
+    
     island.balance += island.price * seekers.length
 
     await this.room.storage.put("islands", this.islands);

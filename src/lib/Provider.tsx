@@ -204,13 +204,23 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setIslands(prev => prev.map(i => i.id === island.id ? island : i))
           }
           if (message.type === "playersync") {
-            const player = (message as PlayerSyncMessage).data
+            const player_data = (message as PlayerSyncMessage).data
+            const player = new PlayerObject(player_data.name);
+            player.id = player_data.id;
+            player.seekers = player_data.seekers;
+            player.inventory = player_data.inventory;
+            player.balance = player_data.balance;
             setPlayers(prev => prev.map(p => p.id === player.id ? player : p))
           }
           if (message.type === "partialsync") {
             const partial = (message as PartialSyncMessage).data
             if (partial.players) {
-                for (const player of partial.players) {
+                for (const player_data of partial.players) {
+                    const player = new PlayerObject(player_data.name);
+                    player.id = player_data.id;
+                    player.seekers = player_data.seekers;
+                    player.inventory = player_data.inventory;
+                    player.balance = player_data.balance;
                     setPlayers(prev => prev.map(p => p.id === player.id ? player : p))
                 }
             }
@@ -220,7 +230,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     island.id = island_data.id; island.seekers = island_data.seekers; 
                     island.treasures = island_data.treasures; 
                     island.balance = island_data.balance; 
-                    
+
                     setIslands(prev => prev.map(i => i.id === island.id ? island : i))
                 }
             }
