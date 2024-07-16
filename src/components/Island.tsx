@@ -92,7 +92,7 @@ const Island: React.FC<IslandProps> = ({ island }) => {
     useEffect(()=>{
         const count = island.treasures.length + (island.mode === 'hide' ? selectedTreasures.length : 0);
         setCols(Math.ceil(Math.sqrt(count)) + 1);
-    }, [island.size, selectedTreasures.length, island.mode])
+    }, [island.size, selectedTreasures.length, island.treasures.length, island.mode])
 
 
   return (
@@ -117,7 +117,7 @@ const Island: React.FC<IslandProps> = ({ island }) => {
                 
 
                 return (
-                    <div className={`h-10 w-10 p-0 m-0 ${backgroundTile(cols+2, super_index)} bg-cover bg-opacity-100  ${center ? 'border-[1px] border-amber-800 border-opacity-5' : ''}`}>
+                    <div key={super_index} className={`h-10 w-10 p-0 m-0 ${backgroundTile(cols+2, super_index)} bg-cover bg-opacity-100  ${center ? 'border-[1px] border-amber-800 border-opacity-5' : ''}`}>
                         <div
                             onMouseEnter={() => setShowPreview(true)}
                             onMouseLeave={() => setShowPreview(false)}

@@ -13,6 +13,31 @@ const TreasureBox: React.FC<TreasureBoxProps> = ({ player }) => {
         
   return (
     <div className="flex flex-wrap">
+      
+      <div
+      className={`h-16 w-16 p-1 m-1 border rounded border-dashed border-green-500 hover:bg-green-500 hover:text-white`}
+      onClick={() => {
+        createTreasure("Wrap", Math.floor(Math.random() * (99999 - 9999) + 9999), player.id);
+      }}
+      >
+        + Wrap New BIG
+      </div>
+      <div
+      className={`h-16 w-16 p-1 m-1 border rounded border-dashed border-green-500 hover:bg-green-500 hover:text-white`}
+      onClick={() => {
+        createTreasure("Wrap", Math.floor(Math.random() * (9999 - 999) + 999), player.id);
+      }}
+      >
+        + Wrap New MID
+      </div>
+      <div
+      className={`h-16 w-16 p-1 m-1 border rounded border-dashed border-green-500 hover:bg-green-500 hover:text-white`}
+      onClick={() => {
+        createTreasure("Wrap", Math.floor(Math.random() * (999 - 99) + 99), player.id);
+      }}
+      >
+        + Wrap New SMALL
+      </div>
       {player.inventory.filter(t => activeMode === "inventory" || t.location === "player").sort((a, b) => a.location.localeCompare(b.location)).map((treasure) => {
         const selected = selectedTreasures.find((t) => t.id === treasure.id);
         return (
@@ -38,31 +63,8 @@ const TreasureBox: React.FC<TreasureBoxProps> = ({ player }) => {
         
       )
       })}
-      <div
-      className={`h-16 w-16 p-1 m-1 border rounded border-dashed border-green-500 hover:bg-green-500 hover:text-white`}
-      onClick={() => {
-        createTreasure("Wrap", Math.floor(Math.random() * (99999 - 9999) + 9999), player.id);
-      }}
-      >
-        + Wrap New BIG
-      </div>
-      <div
-      className={`h-16 w-16 p-1 m-1 border rounded border-dashed border-green-500 hover:bg-green-500 hover:text-white`}
-      onClick={() => {
-        createTreasure("Wrap", Math.floor(Math.random() * (9999 - 999) + 999), player.id);
-      }}
-      >
-        + Wrap New MID
-      </div>
-      <div
-      className={`h-16 w-16 p-1 m-1 border rounded border-dashed border-green-500 hover:bg-green-500 hover:text-white`}
-      onClick={() => {
-        createTreasure("Wrap", Math.floor(Math.random() * (999 - 99) + 99), player.id);
-      }}
-      >
-        + Wrap New SMALL
-      </div>
     </div>
+    
   );
 };
 
