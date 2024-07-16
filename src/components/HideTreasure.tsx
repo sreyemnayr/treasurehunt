@@ -40,13 +40,13 @@ const HideTreasure: React.FC = () => {
             ))}
             </div>
         
-        <div className="flex flex-row justify-start gap-2 overflow-x-scroll w-100 text-xs border border-1 border-solid mt-6">
+        <div className="flex flex-row justify-start gap-2 overflow-x-scroll w-100 text-xs border border-1 border-solid mt-6 ">
             {players.filter((player) => player.balance !== 100000).map((player) => {
                 const netWorth = player.balance + player.inventory.reduce((acc, treasure) => acc + treasure.value, 0);
                 const difference = netWorth - 100000;
                 const plus_minus = (difference / 100000) * 100;
                 return(
-                <div key={player.id} className="flex flex-col justify-start gap-2">
+                <div key={player.id} className="flex flex-col justify-start gap-2 bg-amber-100 text-xs">
                     <p>{player.name}</p>
                     <p>Net Worth: {netWorth}</p>
                     <p>+/-: {plus_minus.toFixed(2)}%</p>

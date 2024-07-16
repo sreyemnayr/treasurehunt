@@ -25,6 +25,56 @@ const gridCols = [
     "grid-cols-10",
 ]
 
+const backgroundTile = (cols: number, index: number) => {
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    if (col === 0 && row === 0) {
+        return "bg-[url('/img/island/TOP_LEFT.png')]";
+    }
+    if (col == 0 && row == cols - 1) {
+        return "bg-[url('/img/island/BOTTOM_LEFT.png')]";
+    }
+
+    
+    if (col == cols - 1 && row == 0) {
+        return "bg-[url('/img/island/TOP_RIGHT.png')]";
+    }
+    if (col == cols - 1 && row == cols - 1) {
+        return "bg-[url('/img/island/BOTTOM_RIGHT.png')]";
+    }
+    if (col == cols - 1) {
+        return "bg-[url('/img/island/RIGHT.png')]";
+    }
+    if (row == cols - 1) {
+        return "bg-[url('/img/island/BOTTOM.png')]";
+    }
+    if (col == 0) {
+        return "bg-[url('/img/island/LEFT.png')]";
+    }
+    if (row == 0) {
+        return "bg-[url('/img/island/TOP.png')]";
+    }
+    return "bg-[url('/img/island/CENTER.png')]";
+}
+
+const centerTile = (cols: number, index: number) => {
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    if (col === 0) {
+        return false;
+    }
+    if (col == cols - 1) {
+        return false;
+    }
+    if (row == cols - 1) {
+        return false;
+    }
+    if (row == 0) {
+        return false;
+    }
+    return true;
+}
+
 const Island: React.FC<IslandProps> = ({ island }) => {
     
     const {selectedTreasures, 
@@ -49,33 +99,46 @@ const Island: React.FC<IslandProps> = ({ island }) => {
     <div className="flex flex-col justify-start items-center">
         <h3 className="text-2xl font-bold">{island.name}</h3>
             
-        <div className={`grid grid-cols-${cols} gap-0 p-0 border border-gray-200 rounded`}>
-            {Array.from({ length: cols**2 }).map((_, index) => {
-                const treasure = island.mode === 'hide' && island.treasures.length > index;
+        <div className={`grid grid-cols-${cols+2} gap-0 p-0 `}>
+            {Array.from({ length: (cols+2)**2 }).map((_, super_index) => {
+                const row = Math.floor(super_index / (cols+2));
+                const col = super_index % (cols+2);
+                const center = centerTile(cols+2, super_index);
+                
+                const index = (row == (cols+1) || row == 0 || col == 0 || col == (cols+1)) ? -1 : super_index - ((cols+1) + (row*2));
+                
+
+                const treasure = center && island.mode === 'hide' && island.treasures.length > index;
                 const playerTreasure = treasure && island.treasures[index].owner === activePlayer.id
-                const selectedTreasure = selectedTreasures.length + island.treasures.length > index && !treasure && island.mode === 'hide';
-                const seeker = island.mode === 'seek' && island.seekers.length > index;
+                const selectedTreasure = center && selectedTreasures.length + island.treasures.length > index && !treasure && island.mode === 'hide';
+                const seeker = center && island.mode === 'seek' && island.seekers.length > index;
                 const playerSeeker = seeker && island.seekers[index].owner === activePlayer.id
-                const selectedSeeker = selectedSeekers.length + island.seekers.length > index && !seeker && island.mode === 'seek';
+                const selectedSeeker = center && selectedSeekers.length + island.seekers.length > index && !seeker && island.mode === 'seek';
+                
 
                 return (
-                    <div
-                        onMouseEnter={() => setShowPreview(true)}
-                        onMouseLeave={() => setShowPreview(false)}
-                        onClick={() => island.mode === activeMode ? island.mode === 'hide' ? addSelectedTreasuresToIsland(island.id) : addSelectedSeekersToIsland(island.id) : null}
-                        key={index} className={`p-0 m-0 border rounded shadow h-8 w-8 ${playerTreasure || playerSeeker ? "bg-red-500" : treasure || seeker ? "bg-red-300" : selectedTreasure || selectedSeeker ? "bg-blue-500" : "bg-gray-500"}`}>
-                        {showPreview && treasure && playerTreasure && (
-                            <Treasure treasure={island.treasures[index]} />
-                        )}
-                        {showPreview && selectedTreasure && (
-                            <Treasure treasure={selectedTreasures[index - island.treasures.length]} />
-                        )}
-                        {showPreview && seeker && playerSeeker && (
-                            <Seeker seeker={island.seekers[index]} />
-                        )}
-                        {showPreview && selectedSeeker && (
-                            <Seeker seeker={selectedSeekers[index - island.seekers.length]} />
-                        )}
+                    <div className={`h-10 w-10 p-0 m-0 ${backgroundTile(cols+2, super_index)} bg-cover bg-opacity-100  ${center ? 'border-[1px] border-amber-800 border-opacity-5' : ''}`}>
+                        <div
+                            onMouseEnter={() => setShowPreview(true)}
+                            onMouseLeave={() => setShowPreview(false)}
+                            onClick={() => island.mode === activeMode ? island.mode === 'hide' ? addSelectedTreasuresToIsland(island.id) : addSelectedSeekersToIsland(island.id) : null}
+                            key={index} className={`p-0 m-0 ${center ? 'hover:border hover:rounded hover:shadow' : ''} h-full w-full ${playerTreasure || playerSeeker ? "bg-opacity-20 bg-amber-800 hover:bg-opacity-40" : treasure || seeker ? "hover:bg-red-300" : selectedTreasure || selectedSeeker ? "bg-opacity-50 bg-blue-500 hover:bg-opacity-90" : ""}`}>
+                            {index >= 0 && showPreview && treasure && playerTreasure && (
+                                <Treasure treasure={island.treasures[index]} />
+                            )}
+                            {index >= 0 && showPreview && selectedTreasure && (
+                                <Treasure treasure={selectedTreasures[index - island.treasures.length]} />
+                            )}
+                            {index >= 0 && showPreview && seeker && playerSeeker && (
+                                <Seeker seeker={island.seekers[index]} />
+                            )}
+                            {index >= 0 && showPreview && selectedSeeker && (
+                                <Seeker seeker={selectedSeekers[index - island.seekers.length]} />
+                            )}
+                            {!center && (
+                                <div className='h-full w-full p-0 m-0'></div>
+                            )}
+                        </div>
                     </div>
                 )
             })}
@@ -99,7 +162,7 @@ const Island: React.FC<IslandProps> = ({ island }) => {
                     </Field>
                     )}
                 </div>
-        <div>
+        <div className="bg-amber-100">
             <p>Value: {island.value}</p>
             <p>Hidden: {island.treasures.length}</p>
             <p>Seekers: {island.seekers.length}</p>

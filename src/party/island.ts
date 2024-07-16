@@ -118,7 +118,7 @@ export default class Server implements Party.Server {
     }
 
     if (this.islands.length <= 0) {
-      this.islands = Array.from({ length: 5 }, (_, i) => new IslandObject(`Island ${i + 1}`, 'hide'))
+      this.islands = Array.from({ length: 2 }, (_, i) => new IslandObject(`Island ${i + 1}`, 'hide'))
     }
 
     await this.room.storage.put("islands", this.islands);
