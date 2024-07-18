@@ -25,7 +25,7 @@ const gridCols = [
     "grid-cols-10",
 ]
 
-const backgroundTile = (cols: number, index: number) => {
+const backgroundTile = (cols: number, index: number, treasure: boolean = false, seeker: boolean = false) => {
     const col = index % cols;
     const row = Math.floor(index / cols);
     if (col === 0 && row === 0) {
@@ -53,6 +53,12 @@ const backgroundTile = (cols: number, index: number) => {
     }
     if (row == 0) {
         return "bg-[url('/img/island/TOP.png')]";
+    }
+    if (treasure) {
+        return "bg-[url('/img/island/CENTER_HIDDEN.png')]";
+    }
+    if (seeker) {
+        return "bg-[url('/img/island/CENTER_DUG.png')]";
     }
     return "bg-[url('/img/island/CENTER.png')]";
 }
@@ -117,7 +123,7 @@ const Island: React.FC<IslandProps> = ({ island }) => {
                 
 
                 return (
-                    <div key={super_index} className={`h-10 w-10 p-0 m-0 ${backgroundTile(cols+2, super_index)} bg-cover bg-opacity-100  ${center ? 'border-[1px] border-amber-800 border-opacity-5' : ''}`}>
+                    <div key={super_index} className={`h-10 w-10 p-0 m-0 ${backgroundTile(cols+2, super_index, treasure, seeker)} bg-cover bg-opacity-100  ${center ? 'border-[1px] border-amber-800 border-opacity-5' : ''}`}>
                         <div
                             onMouseEnter={() => setShowPreview(true)}
                             onMouseLeave={() => setShowPreview(false)}
