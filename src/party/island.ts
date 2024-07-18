@@ -319,11 +319,14 @@ export default class Server implements Party.Server {
     }
     island.seekers = []
     island.treasures = treasures.filter(t => t.location === "island")
+    
     island.balance = 0
 
     island.mode = "hide"
     await this.broadcastIsland(island)
     await this.room.storage.put("islands", this.islands);
+    await this.room.storage.put("players", this.players);
+    await this.broadcastPlayers()
   }
 
   
@@ -377,7 +380,7 @@ export default class Server implements Party.Server {
       ...seekers
     ]
     await this.adjustPlayerBalance(player.id, -island.price * seekers.length)
-    
+
     island.balance += island.price * seekers.length
 
     await this.room.storage.put("islands", this.islands);
