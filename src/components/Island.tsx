@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { PlayerObject, TreasureObject, IslandObject } from '@/lib/Types';
 import Treasure from './Treasure';
 import Seeker from './Seeker';
+import { Timer } from './Timer';
+
 import { useDrop } from 'react-dnd';
 import { useGameProvider } from '@/lib/Provider';
 import { Description, Field, Label, Switch, Button } from '@headlessui/react'
@@ -90,7 +92,8 @@ const Island: React.FC<IslandProps> = ({ island }) => {
         selectedSeekers, 
         activePlayer,
         resolveIsland,
-        activeMode
+        activeMode,
+        admin
     } = useGameProvider();
     const [showPreview, setShowPreview] = useState(false);
     const [cols, setCols] = useState(1)
@@ -103,8 +106,10 @@ const Island: React.FC<IslandProps> = ({ island }) => {
 
   return (
     <div className="flex flex-col justify-start items-center">
-        <h3 className="text-2xl font-bold">{island.name}</h3>
-            
+        
+        {/* <h3 className="text-2xl font-bold">{island.name}</h3> */}
+        
+        <div className="relative">  
         <div className={`grid grid-cols-${cols+2} gap-0 p-0 `}>
             {Array.from({ length: (cols+2)**2 }).map((_, super_index) => {
                 const row = Math.floor(super_index / (cols+2));
@@ -148,36 +153,61 @@ const Island: React.FC<IslandProps> = ({ island }) => {
                     </div>
                 )
             })}
+            
+        </div>
+        {island.mode === 'seek' && (
+            <div className="absolute flex flex-col items-center justify-center p-1 text-[0.5rem] gap-0 font-bold text-white bg-red-500 border-2 border-white rounded-full -top-2 -end-2 dark:border-gray-900">
+                
+                    <span className="m-0 p-0 leading-none">${island.price}/seeker</span>
+                    <span className="m-0 p-0 leading-none">{island.treasures.length} nori</span>
+                    <span className="m-0 p-0 leading-none">${island.value} total</span>
+                    <span className="m-0 p-0 leading-none"> {island.size - island.seekers.length} remaining!</span>
+            
+            </div>
+        )}
+        {island.treasures.length > 0 && (
+            <div className="absolute flex flex-col items-center justify-center p-1 text-xs font-bold text-white bg-lime-500 border-2 border-lime-100 rounded-full -bottom-2 left-1/2 transform -translate-x-1/2 dark:border-gray-900">
+                Closes <Timer deadline={island.expiration} />
+            </div>
+                    )}
+                   
+            
+            
+        
         </div>
 
-        <div className="flex flex-col">
-                    <Field>
-                    <Label>{island.mode === 'hide' ? "Hide" : "Seek"}</Label>
-                        <Switch
-                        checked={island.mode === 'hide'}
-                        onChange={() => toggleIslandMode(island.id)}
-                        className="group inline-flex h-6 w-11 items-center rounded-full bg-green-400 transition data-[checked]:bg-red-600"
-                        >
-                        <span className="size-4 translate-x-1 rounded-full bg-white transition group-data-[checked]:translate-x-6" />
-                        </Switch>
-                    </Field>
-                    {island.mode === 'seek' && island.seekers.length > 0 && (
-                    <Field>
-                        <Button className="rounded bg-sky-600 py-2 px-4 text-sm text-white data-[hover]:bg-sky-500 data-[active]:bg-sky-700"
-                        onClick={() => resolveIsland(island.id)}>Resolve</Button>
-                    </Field>
-                    )}
-                </div>
-        <div className="bg-amber-100">
-            <p>Value: {island.value}</p>
-            <p>Hidden: {island.treasures.length}</p>
-            <p>Seekers: {island.seekers.length}</p>
-            <p>Size: {island.size}</p>
-            <p>Price: {island.price}</p>
-            <p>Balance: {island.balance}</p>
-        </div>
-        
+            {admin && (
+                <>
+            <div className="flex flex-col">
+                        <Field>
+                        <Label>{island.mode === 'hide' ? "Hide" : "Seek"}</Label>
+                            <Switch
+                            checked={island.mode === 'hide'}
+                            onChange={() => toggleIslandMode(island.id)}
+                            className="group inline-flex h-6 w-11 items-center rounded-full bg-green-400 transition data-[checked]:bg-red-600"
+                            >
+                            <span className="size-4 translate-x-1 rounded-full bg-white transition group-data-[checked]:translate-x-6" />
+                            </Switch>
+                        </Field>
+                        {island.mode === 'seek' && island.seekers.length > 0 && (
+                        <Field>
+                            <Button className="rounded bg-sky-600 py-2 px-4 text-sm text-white data-[hover]:bg-sky-500 data-[active]:bg-sky-700"
+                            onClick={() => resolveIsland(island.id)}>Resolve</Button>
+                        </Field>
+                        )}
+                    </div>
+            <div className="bg-amber-100">
+                <p>Value: {island.value}</p>
+                <p>Hidden: {island.treasures.length}</p>
+                <p>Seekers: {island.seekers.length}</p>
+                <p>Size: {island.size}</p>
+                <p>Price: {island.price}</p>
+                <p>Balance: {island.balance}</p>
+            </div>
+        </>
+         )}
     </div>
+           
     
   );
 };

@@ -96,7 +96,9 @@ interface GameContextType {
     selectedTreasures: TreasureObject[];
     selectedSeekers: SeekerObject[];
     activePlayer: PlayerObject;
+    admin: boolean;
     activeMode: 'hide' | 'seek' | 'inventory' | 'setup';
+    toggleAdmin: () => void;
     createTreasure: (name: string, value: number, owner: string) => void;
     updateActiveMode: (mode: 'hide' | 'seek' | 'inventory' | 'setup') => void;
     selectTreasure: (treasureId: string) => void;
@@ -122,7 +124,9 @@ const GameContext = React.createContext<GameContextType>({
     selectedTreasures: [],
     selectedSeekers: [],
     activePlayer: new PlayerObject(''),
+    admin: false,
     activeMode: 'hide',
+    toggleAdmin: () => {},
     createTreasure: () => {},
     updateActiveMode: () => {},
     selectTreasure: () => {},
@@ -170,6 +174,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const [players, setPlayers] = useState<PlayerObject[]>([]);
     const [islands, setIslands] = useState<IslandObject[]>([]);
     const [madeNewTreasure, setMadeNewTreasure] = useState(false);
+    const [admin, setAdmin] = useState(false);
 
     const socket = usePartySocket({
         host: PARTYKIT_HOST,
@@ -191,12 +196,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           if (message.type === "sync") {
             const data = message.data as FullSyncData
             setPlayers(data.players);
-            setIslands(data.islands.map(i => {const io = new IslandObject(i.name, i.mode); io.id = i.id; io.seekers = i.seekers; io.treasures = i.treasures; io.balance = i.balance; return io}));
+            setIslands(data.islands.map(i => {const io = new IslandObject(i.name, i.mode, i.expiration); io.id = i.id; io.seekers = i.seekers; io.treasures = i.treasures; io.balance = i.balance; return io}));
           }
           // after that, the server will send updates as they arrive
           if (message.type === "islandsync") {
             const island_data = (message as IslandSyncMessage).data
-            const island = new IslandObject(island_data.name, island_data.mode); 
+            const island = new IslandObject(island_data.name, island_data.mode, island_data.expiration); 
             island.id = island_data.id; island.seekers = island_data.seekers; 
             island.treasures = island_data.treasures; 
             island.balance = island_data.balance; 
@@ -226,7 +231,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
             if (partial.islands) {
                 for (const island_data of partial.islands) {
-                    const island = new IslandObject(island_data.name, island_data.mode); 
+                    const island = new IslandObject(island_data.name, island_data.mode, island_data.expiration); 
                     island.id = island_data.id; island.seekers = island_data.seekers; 
                     island.treasures = island_data.treasures; 
                     island.balance = island_data.balance; 
@@ -239,10 +244,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       });
 
     
+    
     const [selectedTreasures, setSelectedTreasures] = useState<TreasureObject[]>([]);
     const [selectedSeekers, setSelectedSeekers] = useState<SeekerObject[]>([]);
     const [activePlayer, setActivePlayer] = useState<PlayerObject>(new PlayerObject(''));
     const [activeMode, setActiveMode] = useState<'hide' | 'seek' | 'inventory' | 'setup'>('hide');
+
+    const toggleAdmin = () => {
+        setAdmin(prev => !prev);
+    }
 
     const resetGame = () => {
         setActivePlayer(new PlayerObject(''));
@@ -535,7 +545,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 selectedTreasures,
                 selectedSeekers,
                 activePlayer,
+                admin,
                 activeMode,
+                toggleAdmin,
                 createTreasure,
                 updateActiveMode,
                 selectTreasure,

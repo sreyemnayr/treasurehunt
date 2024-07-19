@@ -156,8 +156,9 @@ export default function CursorsProvider(props: { children: React.ReactNode }) {
         getCount: getCount,
       }}
     >
-      <ConnectionStatus socket={socket} />
+      
       {props.children}
+      <ConnectionStatus socket={socket} />
     </CursorsContext.Provider>
   );
 }

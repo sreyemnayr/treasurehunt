@@ -56,7 +56,7 @@ const SeekerBox: React.FC<SeekerBoxProps> = ({ player }) => {
             }
           }}
         
-        className={`h-16 w-16 p-1 m-1 border rounded cursor-move ${selected ? "bg-blue-500" : ""}`}
+        className={`h-16 w-16 p-1 m-1 cursor-move rounded ${selected ? "bg-lime-400 rounded hover:border hover:border-lime-100" : "hover:bg-lime-200"}`}
       >
         <Seeker
           

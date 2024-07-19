@@ -40,20 +40,23 @@ function shuffle(array: any[]) {
 export default class Server implements Party.Server {
   islands: IslandObject[];
   players: PlayerObject[];
+  expiration: number;
 
   constructor(readonly room: Party.Room) {
     this.islands = [];
     this.players = [];
-
+    this.expiration = Date.now() + 5 * 60 * 1000;
   }
 
   async init(reset: boolean = false) {
     if(reset){
       this.islands = [];
       this.players = [];
+      this.expiration = Date.now() + 5 * 60 * 1000;
     } else {
       this.islands = (await this.room.storage.get<IslandObject[]>("islands")) ?? [];
       this.players = (await this.room.storage.get<PlayerObject[]>("players")) ?? [];
+      this.expiration = (await this.room.storage.get<number>("expiration")) ?? Date.now() + 5 * 60 * 1000;
     }
     
 
@@ -118,11 +121,13 @@ export default class Server implements Party.Server {
     }
 
     if (this.islands.length <= 0) {
-      this.islands = Array.from({ length: 2 }, (_, i) => new IslandObject(`Island ${i + 1}`, 'hide'))
+      this.islands = Array.from({ length: 2 }, (_, i) => new IslandObject(`Island ${i + 1}`, i % 2 === 0 ? 'hide' : 'seek', this.expiration))
     }
 
     await this.room.storage.put("islands", this.islands);
     await this.room.storage.put("players", this.players);
+    await this.room.storage.put("expiration", this.expiration);
+    await this.room.storage.setAlarm(this.expiration);
   }
 
   async onStart() {
@@ -138,6 +143,35 @@ export default class Server implements Party.Server {
       }
     }
     connection.send(JSON.stringify(syncMessage));
+  }
+
+
+
+  async onAlarm() {
+    // switch island modes
+    this.expiration = Date.now() + 5 * 60 * 1000;
+
+    for (let i = 0; i < this.islands.length; i++) {
+      
+      const island = this.islands[i];
+      island.expiration = this.expiration;
+      if (island.mode === "seek") {
+        await this.resolveIsland(island.id)
+      } else {
+        island.mode = "seek"
+        await this.broadcastIsland(island)
+      }
+    }
+
+    this.room.storage.put("islands", this.islands)
+
+    this.broadcastIslands()
+    this.broadcastPlayers()
+    
+  
+    // (optional) schedule next alarm in 15 minutes
+    this.room.storage.setAlarm(this.expiration);
+    this.room.storage.put("expiration", this.expiration);
   }
 
   async broadcastPlayer(player: PlayerObject) {
@@ -327,6 +361,7 @@ export default class Server implements Party.Server {
     await this.room.storage.put("islands", this.islands);
     await this.room.storage.put("players", this.players);
     await this.broadcastPlayers()
+    return island
   }
 
   
@@ -337,8 +372,9 @@ export default class Server implements Party.Server {
       return null
     }
     player.balance += value
-    await this.broadcastPlayer(player)
+    
     await this.room.storage.put("players", this.players);
+    await this.broadcastPlayer(player)
   }
 
   async addSeekersToIsland(seeker_ids: string[], island_id: string, player_id: string) {

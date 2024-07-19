@@ -66,14 +66,16 @@ export class IslandObject {
     seekers: SeekerObject[];
     mode: 'hide' | 'seek';
     balance: number;
+    expiration: number;
   
-    constructor(name: string, mode: 'hide' | 'seek') {
+    constructor(name: string, mode: 'hide' | 'seek', expiration: number) {
       this.id = nanoid();
       this.name = name;
       this.treasures = [];
       this.seekers = [];
       this.mode = mode;
       this.balance = 0;
+      this.expiration = expiration > 0 ? expiration : Date.now() + 15 * 60 * 1000;
     }
   
     get size(): number {

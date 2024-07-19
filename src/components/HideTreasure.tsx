@@ -5,12 +5,34 @@ import Island from './Island';
 import { TreasureObject, PlayerObject } from '@/lib/Types';
 import { useGameProvider } from '@/lib/Provider';
 import { Description, Field, Label, Switch, Select, Button } from '@headlessui/react'
+import { PlayersData } from './PlayersData';
+
 
 const HideTreasure: React.FC = () => {
-    const {activePlayer, islands, players, activeMode, updateActivePlayer, updateActiveMode, resetGame} = useGameProvider();
+    const {activePlayer, islands, players, activeMode, updateActivePlayer, updateActiveMode, resetGame, toggleAdmin, admin} = useGameProvider();
     
   return (
+    <>
+    
     <div className="w-full">
+        
+        {activeMode !== "seek" && <TreasureBox player={activePlayer} />}
+        {activeMode !== "hide" && <SeekerBox player={activePlayer} />}
+        
+            <div className={`flex flex-row justify-start gap-2`}>
+            {islands.filter((island) => island.mode === activeMode).map((island) => (
+                <div key={island.id} className={`${activeMode !== island.mode ? "opacity-50" : ""}`}>
+                    <Island island={island} />
+                </div>
+            ))}
+            </div>
+
+            
+        {admin && (
+        <div className="flex flex-col gap-2 p-20">
+            <h2>Admin Stuff</h2>
+            
+        <PlayersData />
         <Field>
             <Label>Game Mode</Label>
          <Select name="status" aria-label="Project status" value={activeMode} onChange={(e) => updateActiveMode(e.target.value as 'hide' | 'seek' | 'inventory' | 'setup')}>
@@ -29,40 +51,12 @@ const HideTreasure: React.FC = () => {
             
         </Select>
         </Field>
-        {activeMode !== "seek" && <TreasureBox player={activePlayer} />}
-        {activeMode !== "hide" && <SeekerBox player={activePlayer} />}
-        
-            <div className={`flex flex-row justify-start gap-2`}>
-            {islands.map((island) => (
-                <div key={island.id} className={`${activeMode !== island.mode ? "opacity-50" : ""}`}>
-                    <Island island={island} />
-                </div>
-            ))}
-            </div>
-        
-        <div className="flex flex-row justify-start gap-2 overflow-x-scroll w-100 text-xs border border-1 border-solid mt-6 ">
-            {players.filter((player) => player.balance !== 100000).map((player) => {
-                const netWorth = player.balance + player.inventory.reduce((acc, treasure) => acc + treasure.value, 0);
-                const difference = netWorth - 100000;
-                const plus_minus = (difference / 100000) * 100;
-                return(
-                <div key={player.id} className="flex flex-col justify-start gap-2 bg-amber-100 text-xs">
-                    <p>{player.name}</p>
-                    <p>Net Worth: {netWorth}</p>
-                    <p>+/-: {plus_minus.toFixed(2)}%</p>
-                    <p>Balance: {player.balance}</p>
-                    <p>Treasures: {player.inventory.length}</p>
-                    <p>Treasures Hidden: {player.inventory.filter((treasure) => treasure.location == "island").length}</p>
-                    <p>Treasure Value: {player.inventory.reduce((acc, treasure) => acc + treasure.value, 0)}</p>
-                    <p>Seekers: {player.seekers.length}</p>
-                    <p>Seekers Deployed: {player.seekers.filter((seeker) => seeker.location == "island").length}</p>
-                </div>
-                )
-            }
-            )}
-        </div>
         <Button className="rounded bg-sky-600 py-2 px-4 text-sm text-white data-[hover]:bg-sky-500 data-[active]:bg-sky-700" onClick={resetGame}>Reset Game</Button>
+        </div>
+        )}
     </div>
+    
+</>
     );
 
 };
