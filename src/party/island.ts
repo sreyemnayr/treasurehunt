@@ -371,6 +371,7 @@ export default class Server implements Party.Server {
     toPlayer.inventory.push(treasure)
     
     await this.storePlayers();
+    await this.storeEvents();
     return { players: [fromPlayer, toPlayer], events: new_events }
   }
 
@@ -735,7 +736,7 @@ export default class Server implements Party.Server {
     
 
     if (this.islands.length > 0) {
-      return new Response(JSON.stringify({islands: this.islands, players: this.players}), {
+      return new Response(JSON.stringify({islands: this.islands, players: this.players, events: this.events}), {
         status: 200,
         headers: { "Content-Type": "application/json" }
       });

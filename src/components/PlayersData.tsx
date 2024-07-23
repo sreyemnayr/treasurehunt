@@ -27,7 +27,7 @@ export const PlayersData = () => {
                 <p>Seekers: {player.seekers.length}</p>
                 <p>Seekers Deployed: {player.seekers.filter((seeker) => seeker.location == "island").length}</p>
                 
-                <div className="overflow-y-scroll max-h-60 divide-y">
+                <div className="overflow-y-auto max-h-60 divide-y">
                 {events && events.length > 0 && events.filter((event) => event.player_id === player.id).sort((a, b) => b.timestamp - a.timestamp).map((event) => {
                     console.log("event", event)
                     const difference = (event.after - event.before) + event.value;
