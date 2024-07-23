@@ -435,23 +435,25 @@ export default class Server implements Party.Server {
     const treasures = island.treasures;
     const total_value = island.value;
 
-    for(let i = 0; i < treasures.length; i++) {
-      const treasure = treasures[i];
-      const value_share = treasure.value / total_value;
-      const balance_share = Math.floor(island.balance * value_share);
-      console.log("Island balance", island.balance)
-      console.log("Total value", total_value)
-      console.log("Value share", value_share)
-      console.log("Balance share", balance_share)
-      const player = this.players.find(player => player.id === treasure.owner)
-      if(player){
-        console.log("Player before")
-        logPlayer(player)
-      } 
-      const p = await this.adjustPlayerBalance(treasure.owner, balance_share, `Resolved island and received ${balance_share} ( ${(value_share * 100).toFixed(2)}% of ${total_value} ) from seeker fees`);
-      if(p){
-        console.log("Player after")
-        logPlayer(p)
+    if (island.balance > 0) {
+      for(let i = 0; i < treasures.length; i++) {
+        const treasure = treasures[i];
+        const value_share = treasure.value / total_value;
+        const balance_share = Math.floor(island.balance * value_share);
+        console.log("Island balance", island.balance)
+        console.log("Total value", total_value)
+        console.log("Value share", value_share)
+        console.log("Balance share", balance_share)
+        const player = this.players.find(player => player.id === treasure.owner)
+        if(player){
+          console.log("Player before")
+          logPlayer(player)
+        } 
+        const p = await this.adjustPlayerBalance(treasure.owner, balance_share, `Resolved island and received ${balance_share} ( ${(value_share * 100).toFixed(2)}% of ${total_value} ) from seeker fees`);
+        if(p){
+          console.log("Player after")
+          logPlayer(p)
+        }
       }
     }
 
@@ -467,57 +469,62 @@ export default class Server implements Party.Server {
       }
     }
 
-    const scrambled_treasures: (TreasureObject|null)[] = Array.from({ length: island.size }, () => null);
-    const scrambled_seekers: (SeekerObject|null)[] = Array.from({ length: island.size }, () => null);
+    if (island.balance > 0) {
+      const scrambled_treasures: (TreasureObject|null)[] = Array.from({ length: island.size }, () => null);
+      const scrambled_seekers: (SeekerObject|null)[] = Array.from({ length: island.size }, () => null);
 
-    for(let i = 0; i < island.size; i++) {
-        scrambled_treasures[i] = treasures[i];
-        scrambled_seekers[i] = island.seekers[i];
-    }
-    shuffle(scrambled_treasures);
-    shuffle(scrambled_seekers);
+      for(let i = 0; i < island.size; i++) {
+          scrambled_treasures[i] = treasures[i];
+          scrambled_seekers[i] = island.seekers[i];
+      }
+      shuffle(scrambled_treasures);
+      shuffle(scrambled_seekers);
 
-    for(let i = 0; i < island.size; i++) {
-      const treasure = scrambled_treasures[i];
-      const seeker = scrambled_seekers[i];
-      if(seeker){
-        seeker.energy += 1
-        seeker.island = ""
-        seeker.location = "player"
-        const owner = this.players.find(player => player.id === seeker.owner)
-        if(owner){
-          owner.seekers = owner.seekers.map(s => s.id !== seeker.id ? s : seeker)
-          if(!treasure) {
-            const event = new EventObject(`Seeker ${seeker.name} returned emptyhanded`, seeker.owner, owner?.balance, owner?.balance)
-            new_events.push(event)
-            this.events.push(event)
+      for(let i = 0; i < island.size; i++) {
+        const treasure = scrambled_treasures[i];
+        const seeker = scrambled_seekers[i];
+        if(seeker){
+          seeker.energy += 1
+          seeker.island = ""
+          seeker.location = "player"
+          const owner = this.players.find(player => player.id === seeker.owner)
+          if(owner){
+            owner.seekers = owner.seekers.map(s => s.id !== seeker.id ? s : seeker)
+            if(!treasure) {
+              const event = new EventObject(`Seeker ${seeker.name} returned emptyhanded`, seeker.owner, owner?.balance, owner?.balance)
+              new_events.push(event)
+              this.events.push(event)
+            }
           }
+          
         }
+        if(treasure && seeker) {
+            treasure.island = ""
+            treasure.location = "player"
+            const treasure_owner = this.players.find(player => player.id === treasure.owner)
+            const data = await this.transferTreasureOwnership(treasure, treasure.owner, seeker.owner);
+            const seeker_owner = this.players.find(player => player.id === seeker.owner)
+            
+            const event = new EventObject(`Seeker ${seeker.name} found treasure buried by ${treasure_owner?.name}`, seeker.owner, seeker_owner?.balance, seeker_owner?.balance, treasure.value)
+            this.events.push(event)
+            new_events.push(event)
+            
+            if(data){
+              await this.broadcastPartialSync(data)
+              
+            }
+            
+        } 
         
       }
-      if(treasure && seeker) {
-          treasure.island = ""
-          treasure.location = "player"
-          const treasure_owner = this.players.find(player => player.id === treasure.owner)
-          const data = await this.transferTreasureOwnership(treasure, treasure.owner, seeker.owner);
-          const seeker_owner = this.players.find(player => player.id === seeker.owner)
-          
-          const event = new EventObject(`Seeker ${seeker.name} found treasure buried by ${treasure_owner?.name}`, seeker.owner, seeker_owner?.balance, seeker_owner?.balance, treasure.value)
-          this.events.push(event)
-          new_events.push(event)
-          
-          if(data){
-            await this.broadcastPartialSync(data)
-            
-          }
-          
-      } 
+      island.seekers = []
+      island.treasures = treasures.filter(t => t.location === "island")
       
+      island.balance = 0
+
     }
-    island.seekers = []
-    island.treasures = treasures.filter(t => t.location === "island")
+
     
-    island.balance = 0
 
     island.mode = "hide"
     await this.broadcastIsland(island)
