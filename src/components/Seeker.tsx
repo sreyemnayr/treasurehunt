@@ -21,6 +21,12 @@ const Seeker: React.FC<SeekerProps> = ({ seeker }) => {
 
   const [showValue, setShowValue] = useState(false);
 
+  if(seeker === undefined) {
+    return (
+        <div></div>
+    )
+  }
+
 
   return (
     <div

@@ -6,6 +6,7 @@ import { useGameProvider } from "@/lib/Provider";
 import { GameProvider } from "@/lib/Provider";
 import Cursors from "@/components/Cursors";
 import AdminButton from "@/components/AdminButton";
+import AdminStuff from "@/components/AdminStuff";
 import Nav from "@/components/Nav";
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
       <div className="z-10 w-full max-w-5xl items-center font-mono text-sm lg:flex">
         <HideTreasure />
       </div>
+      <AdminStuff />
       <AdminButton />
     </main>
     </GameProvider>

@@ -19,7 +19,7 @@ const TreasureBox: React.FC<TreasureBoxProps> = ({ player }) => {
     const [amt, setAmt] = useState(1)
         
   return (
-    <div className="flex flex-wrap">
+    <div className="flex flex-wrap md:w-1/4 w-full content-center my-auto md:max-h-[60vh] md:overflow-y-auto">
 
     <Dialog open={isOpen} onClose={() => setIsOpen(false)} className="relative z-50">
     <DialogBackdrop className="fixed inset-0 bg-black/80" />

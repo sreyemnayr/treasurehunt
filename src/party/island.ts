@@ -5,11 +5,13 @@ import {
   PlayerObject, 
   SeekerObject, 
   TreasureObject, 
+  EventObject,
   SyncErrorMessage,
   FullSyncData,
   SyncMessage,
   IslandSyncMessage,
   PlayerSyncMessage,
+  EventSyncMessage,
   PartialSyncMessage,
   Message,
   CreateTreasureMessage,
@@ -19,6 +21,28 @@ import {
   ResolveIslandMessage
 
 } from "@/lib/Types";
+
+function logPlayer(player: PlayerObject) {
+  console.log("Player", {
+    id: player.id,
+    name: player.name,
+    balance: player.balance,
+    seekers: player.seekers.length,
+    inventory: player.inventory.length
+  })
+}
+
+function logIsland(island: IslandObject) {
+  console.log("Island", {
+    id: island.id,
+    mode: island.mode,
+    size: island.size,
+    balance: island.balance,
+    treasures: island.treasures.length,
+    seekers: island.seekers.length,
+    price: island.price
+  })
+}
 
 
 function shuffle(array: any[]) {
@@ -40,22 +64,92 @@ function shuffle(array: any[]) {
 export default class Server implements Party.Server {
   islands: IslandObject[];
   players: PlayerObject[];
+  events: EventObject[];
   expiration: number;
 
   constructor(readonly room: Party.Room) {
     this.islands = [];
     this.players = [];
+    this.events = [];
     this.expiration = Date.now() + 5 * 60 * 1000;
+  }
+
+  async store(item: IslandObject | PlayerObject | EventObject) {
+    await this.room.storage.put(item.id, item);
+  }
+
+  async storeMany(items: (IslandObject | PlayerObject | EventObject)[]) {
+    await Promise.all(items.map(item => this.room.storage.put(item.id, item)));
+  }
+
+  async storePlayers() {
+    await this.storeMany(this.players);
+    await this.room.storage.put("player_ids", this.players.map(player => player.id));
+  }
+
+  async storeIslands() {
+    await this.storeMany(this.islands);
+    await this.room.storage.put("island_ids", this.islands.map(island => island.id));
+  }
+
+  async storeEvents() {
+    await this.storeMany(this.events);
+    await this.room.storage.put("event_ids", this.events.map(event => event.id));
+  }
+
+  async storeAll() {
+    await this.storeIslands();
+    await this.storePlayers();
+    await this.storeEvents();
+    
+    await this.room.storage.put("expiration", this.expiration);
+  }
+
+  async storeKeys(type: "islands" | "players" | "events", data: any[]) {
+    await this.room.storage.put(type, data);
+  }
+
+  async resetStorage() {
+    const keys = [...(await this.room.storage.list()).keys()];
+    await Promise.all(keys.map(key => this.room.storage.delete(key)));
+  }
+
+  async getIslands() {
+    const keys: string[] = await this.room.storage.get("island_ids") ?? [];
+    const items = (await Promise.all(keys.map(key => this.room.storage.get(key))) as IslandObject[]).map(item => {
+      const i = new IslandObject(item.id, item.mode, item.expiration);
+      i.treasures = item.treasures;
+      i.seekers = item.seekers;
+      i.balance = item.balance;
+      return i;
+    });
+    return items;
+  }
+
+  async getPlayers() {
+    const keys: string[] = await this.room.storage.get("player_ids") ?? [];
+    const items = (await Promise.all(keys.map(key => this.room.storage.get(key)))) as PlayerObject[];
+    return items;
+  }
+
+  async getEvents() {
+    const keys: string[] = await this.room.storage.get("event_ids") ?? [];
+    const items = (await Promise.all(keys.map(key => this.room.storage.get(key)))) as EventObject[];
+    return items;
   }
 
   async init(reset: boolean = false) {
     if(reset){
+      await this.resetStorage();
       this.islands = [];
       this.players = [];
+      this.events = [];
+      this.events.push(new EventObject("Game reset"));
       this.expiration = Date.now() + 5 * 60 * 1000;
     } else {
-      this.islands = (await this.room.storage.get<IslandObject[]>("islands")) ?? [];
-      this.players = (await this.room.storage.get<PlayerObject[]>("players")) ?? [];
+      this.islands = (await this.getIslands()) ?? [];
+      this.players = (await this.getPlayers()) ?? [];
+      this.events = (await this.getEvents()) ?? [];
       this.expiration = (await this.room.storage.get<number>("expiration")) ?? Date.now() + 5 * 60 * 1000;
     }
     
@@ -115,6 +209,7 @@ export default class Server implements Party.Server {
           const seekerCopy = new SeekerObject(`${seeker.name} #${value}`, seeker.tier, player.id, seeker.imageUrl);
           player.seekers.push(seekerCopy);
           }
+          this.events.push(new EventObject(`${player.name} joined the game`, player.id, 0, player.balance))
       });
 
       this.players = initial_players
@@ -124,9 +219,7 @@ export default class Server implements Party.Server {
       this.islands = Array.from({ length: 2 }, (_, i) => new IslandObject(`Island ${i + 1}`, i % 2 === 0 ? 'hide' : 'seek', this.expiration))
     }
 
-    await this.room.storage.put("islands", this.islands);
-    await this.room.storage.put("players", this.players);
-    await this.room.storage.put("expiration", this.expiration);
+    await this.storeAll()
     await this.room.storage.setAlarm(this.expiration);
   }
 
@@ -139,7 +232,8 @@ export default class Server implements Party.Server {
       type: "sync",
       data: {
         islands: this.islands,
-        players: this.players
+        players: this.players,
+        events: this.events
       }
     }
     connection.send(JSON.stringify(syncMessage));
@@ -163,7 +257,6 @@ export default class Server implements Party.Server {
       }
     }
 
-    this.room.storage.put("islands", this.islands)
 
     this.broadcastIslands()
     this.broadcastPlayers()
@@ -171,13 +264,41 @@ export default class Server implements Party.Server {
   
     // (optional) schedule next alarm in 15 minutes
     this.room.storage.setAlarm(this.expiration);
-    this.room.storage.put("expiration", this.expiration);
+    await this.storeAll()
   }
 
   async broadcastPlayer(player: PlayerObject) {
     const syncMessage = <PlayerSyncMessage>{
       type: "playersync",
       data: player
+    }
+    this.room.broadcast(JSON.stringify(syncMessage));
+  }
+
+  async broadcastEvent(event: EventObject) {
+    const syncMessage = <EventSyncMessage>{
+      type: "eventsync",
+      data: event
+    }
+    this.room.broadcast(JSON.stringify(syncMessage));
+  }
+
+  async broadcastAllEvents() {
+    const syncMessage = <PartialSyncMessage>{
+      type: "partialsync",
+      data: {
+        events: this.events
+      }
+    }
+    this.room.broadcast(JSON.stringify(syncMessage));
+  }
+
+  async broadcastEvents(events: EventObject[]) {
+    const syncMessage = <PartialSyncMessage>{
+      type: "partialsync",
+      data: {
+        events: events
+      }
     }
     this.room.broadcast(JSON.stringify(syncMessage));
   }
@@ -214,7 +335,8 @@ export default class Server implements Party.Server {
       type: "sync",
       data: {
         islands: this.islands,
-        players: this.players
+        players: this.players,
+        events: this.events
       }
     }
     this.room.broadcast(JSON.stringify(syncMessage));
@@ -229,6 +351,7 @@ export default class Server implements Party.Server {
   }
 
   async transferTreasureOwnership(treasure: TreasureObject, fromPlayer_id: string, toPlayer_id: string) {
+    const new_events: EventObject[] = []
     const fromPlayer = this.players.find(player => player.id === fromPlayer_id)
     const toPlayer = this.players.find(player => player.id === toPlayer_id)
     if (!fromPlayer || !toPlayer) {
@@ -240,23 +363,29 @@ export default class Server implements Party.Server {
     }
     treasure.owner = toPlayer.id
 
-
-
+    const event = new EventObject(`Treasure worth ${treasure.value} found by ${fromPlayer.name}`, fromPlayer.id, fromPlayer.balance, fromPlayer.balance, treasure.value)
+    new_events.push(event)
+    this.events.push(event)
+    
     fromPlayer.inventory = fromPlayer.inventory.filter(t => t.id !== treasure.id)
     toPlayer.inventory.push(treasure)
-    await this.room.storage.put("players", this.players);
-    return { players: [fromPlayer, toPlayer] }
+    
+    await this.storePlayers();
+    return { players: [fromPlayer, toPlayer], events: new_events }
   }
 
   async createTreasure(player_id: string, value: number) {
-    const player = this.players.find(player => player.id === player_id)
+    let player: PlayerObject | undefined | null = this.players.find(player => player.id === player_id)
     if (!player) {
       return null
     }
     const treasure = new TreasureObject(`Treasure ${player.inventory.length + 1}`, value, player_id, "/img/treasure.png");
-    player.balance -= value
+    player = await this.adjustPlayerBalance(player_id, -value, `Created treasure worth ${value}`)
+    if (!player) {
+      return null
+    }
     player.inventory.push(treasure)
-    await this.room.storage.put("players", this.players);
+    await this.storePlayers()
     return player
   }
 
@@ -290,14 +419,15 @@ export default class Server implements Party.Server {
       ...treasures
     ]
 
-    await this.room.storage.put("islands", this.islands);
-    await this.room.storage.put("players", this.players);
+    await this.storePlayers()
+    await this.storeIslands()
     
     return { players: [player], islands: [island] }
   }
 
   async resolveIsland(island_id: string) {
     const island = this.islands.find(island => island.id === island_id)
+    const new_events: EventObject[] = []
     if (!island) {
       return null
     }
@@ -309,12 +439,32 @@ export default class Server implements Party.Server {
       const treasure = treasures[i];
       const value_share = treasure.value / total_value;
       const balance_share = Math.floor(island.balance * value_share);
-      await this.adjustPlayerBalance(treasure.owner, balance_share);
+      console.log("Island balance", island.balance)
+      console.log("Total value", total_value)
+      console.log("Value share", value_share)
+      console.log("Balance share", balance_share)
+      const player = this.players.find(player => player.id === treasure.owner)
+      if(player){
+        console.log("Player before")
+        logPlayer(player)
+      } 
+      const p = await this.adjustPlayerBalance(treasure.owner, balance_share, `Resolved island and received ${balance_share} ( ${(value_share * 100).toFixed(2)}% of ${total_value} ) from seeker fees`);
+      if(p){
+        console.log("Player after")
+        logPlayer(p)
+      }
     }
 
     for(let i = 0; i < treasures.length; i++) {
       const treasure = treasures[i];
-      treasure.value = Math.ceil(treasure.value * 1.01);
+      const yield_amt = Math.ceil(treasure.value * 0.001);
+      treasure.value += yield_amt;
+      const owner = this.players.find(player => player.id === treasure.owner)
+      if(owner){
+        const event = new EventObject(`Treasure yielded ${yield_amt}, increasing to ${treasure.value}`, treasure.owner, owner.balance, owner.balance, yield_amt)
+        new_events.push(event)
+        this.events.push(event)
+      }
     }
 
     const scrambled_treasures: (TreasureObject|null)[] = Array.from({ length: island.size }, () => null);
@@ -337,12 +487,25 @@ export default class Server implements Party.Server {
         const owner = this.players.find(player => player.id === seeker.owner)
         if(owner){
           owner.seekers = owner.seekers.map(s => s.id !== seeker.id ? s : seeker)
+          if(!treasure) {
+            const event = new EventObject(`Seeker ${seeker.name} returned emptyhanded`, seeker.owner, owner?.balance, owner?.balance)
+            new_events.push(event)
+            this.events.push(event)
+          }
         }
+        
       }
       if(treasure && seeker) {
           treasure.island = ""
           treasure.location = "player"
+          const treasure_owner = this.players.find(player => player.id === treasure.owner)
           const data = await this.transferTreasureOwnership(treasure, treasure.owner, seeker.owner);
+          const seeker_owner = this.players.find(player => player.id === seeker.owner)
+          
+          const event = new EventObject(`Seeker ${seeker.name} found treasure buried by ${treasure_owner?.name}`, seeker.owner, seeker_owner?.balance, seeker_owner?.balance, treasure.value)
+          this.events.push(event)
+          new_events.push(event)
+          
           if(data){
             await this.broadcastPartialSync(data)
             
@@ -358,23 +521,42 @@ export default class Server implements Party.Server {
 
     island.mode = "hide"
     await this.broadcastIsland(island)
-    await this.room.storage.put("islands", this.islands);
-    await this.room.storage.put("players", this.players);
+    await this.storeIslands()
+    await this.storePlayers()
+    await this.storeEvents()
+    await this.broadcastEvents(new_events)
     await this.broadcastPlayers()
     return island
   }
 
   
 
-  async adjustPlayerBalance(player_id: string, value: number) {
+  async adjustPlayerBalance(player_id: string, value: number, message: string = "") {
     const player = this.players.find(player => player.id === player_id)
+    
     if (!player) {
       return null
     }
+    const starting_balance = player.balance
+
     player.balance += value
     
-    await this.room.storage.put("players", this.players);
+    await this.storePlayers()
     await this.broadcastPlayer(player)
+    console.log(message)
+    console.log(message.includes("Created"))
+    if(message !== ""){
+      const event = new EventObject(message, player_id, starting_balance, player.balance)
+      if (message.includes("Created")){
+        event.value = -value
+
+      } 
+      console.log(event)
+      this.events.push(event)
+      await this.broadcastEvent(event)
+      await this.store(event)
+    }
+    return player
   }
 
   async addSeekersToIsland(seeker_ids: string[], island_id: string, player_id: string) {
@@ -415,12 +597,24 @@ export default class Server implements Party.Server {
       ...player.seekers.filter(t => !seeker_ids.includes(t.id)),
       ...seekers
     ]
-    await this.adjustPlayerBalance(player.id, -island.price * seekers.length)
+    console.log("Player before")
+    logPlayer(player)
+    console.log("Island before")
+    logIsland(island)
+    
+    const p = await this.adjustPlayerBalance(player.id, -island.price * seekers.length, `Added ${seekers.length} seekers to island`)
+    if(p){
+      console.log("Player after")
+      logPlayer(p)
+    }
 
     island.balance += island.price * seekers.length
 
-    await this.room.storage.put("islands", this.islands);
-    await this.room.storage.put("players", this.players);
+    console.log("Island after")
+    logIsland(island)
+    
+
+    await this.storeAll()
     
     return { players: [player], islands: [island] }
   }
@@ -468,7 +662,7 @@ export default class Server implements Party.Server {
       const island = this.islands.find(island => island.id === args.island_id)
       if (island) {
         island.mode = args.mode
-        await this.room.storage.put("islands", this.islands);
+        await this.storeIslands()
 
         await this.broadcastIsland(island)
       } else {
@@ -525,7 +719,8 @@ export default class Server implements Party.Server {
       
         return json<SyncMessage>({ type: "sync", data: {
           islands: this.islands,
-          players: this.players
+          players: this.players,
+          events: this.events
         } });
       
     }

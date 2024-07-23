@@ -38,10 +38,10 @@ const sortByTier = (a: SeekerObject, b: SeekerObject) => {
 
 const SeekerBox: React.FC<SeekerBoxProps> = ({ player }) => {
 
-    const { selectSeeker, deselectSeeker, selectedSeekers, activeMode } = useGameProvider();
+    const { selectSeeker, selectAllPlayerSeekers, deselectSeeker, selectedSeekers, activeMode } = useGameProvider();
         
   return (
-    <div className="flex flex-wrap">
+    <div className="flex flex-wrap md:w-1/4 w-full my-auto md:max-h-[60vh] md:overflow-y-auto">
       {player.seekers.filter(t => activeMode === "inventory" || t.location === "player").sort(sortByTier).map((seeker) => {
         const selected = selectedSeekers.find((t) => t.id === seeker.id);
         return (
@@ -67,6 +67,14 @@ const SeekerBox: React.FC<SeekerBoxProps> = ({ player }) => {
         
       )
       })}
+      <div
+      className={`h-16 w-16 p-1 m-1 border rounded border-dashed border-green-500 hover:bg-green-500 hover:text-white`}
+      onClick={() => {
+        selectAllPlayerSeekers();
+      }}
+      >
+        Select All
+      </div>
     </div>
   );
 };

@@ -21,6 +21,12 @@ const Treasure: React.FC<TreasureProps> = ({ treasure }) => {
 
   const [showValue, setShowValue] = useState(false);
 
+  if( treasure === undefined) {
+    return (
+        <div></div>
+    )
+  }
+
 
   return (
     <div

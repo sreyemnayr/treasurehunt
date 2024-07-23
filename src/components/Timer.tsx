@@ -25,9 +25,9 @@ export const Timer = ({ deadline = (new Date()).getMilliseconds() }) => {
     }, [time]);
 
     return (
-        <div className="timer">
+        
             <p>{timeString}</p>
-        </div>
+        
     );
 };
 

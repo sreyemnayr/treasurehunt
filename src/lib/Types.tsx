@@ -9,7 +9,7 @@ export class PlayerObject {
     seekers: SeekerObject[];
   
     constructor(name: string) {
-      this.id = nanoid();
+      this.id = nanoid(5);
       this.name = name;
       this.balance = 0; // starting balance
       this.inventory = [];
@@ -27,7 +27,7 @@ export class TreasureObject {
     imageUrl: string;
   
     constructor(name: string, value: number, owner: string, imageUrl: string) {
-      this.id = nanoid();
+      this.id = nanoid(10);
       this.name = name;
       this.value = value;
       this.owner = owner;
@@ -48,7 +48,7 @@ export class TreasureObject {
     energy: number;
 
     constructor(name: string, tier: 'gold' | 'silver' | 'bronze', owner: string, imageUrl: string) {
-      this.id = nanoid();
+      this.id = nanoid(10);
       this.name = name;
       this.tier = tier;
       this.imageUrl = imageUrl;
@@ -69,7 +69,7 @@ export class IslandObject {
     expiration: number;
   
     constructor(name: string, mode: 'hide' | 'seek', expiration: number) {
-      this.id = nanoid();
+      this.id = nanoid(5);
       this.name = name;
       this.treasures = [];
       this.seekers = [];
@@ -99,25 +99,21 @@ export class IslandObject {
 
   export class EventObject {
     id: string;
-    name: string;
-    description: string;
+    message: string;
     timestamp: number;
-    type: 'treasure_hide' | 'treasure_seek' | 'fee_paid' | 'reward_paid';
-    player: PlayerObject | null;
-    treasure: TreasureObject | null;
-    island: IslandObject | null;
+    player_id: string;
+    before: number;
+    after: number;
     value: number;
-
-    constructor(name: string, description: string, type: 'treasure_hide' | 'treasure_seek' | 'treasure_found' | 'treasure_return') {
-      this.id = nanoid();
-      this.name = name;
-      this.description = description;
+    
+    constructor(message: string, player_id: string = "", before: number = 0, after: number = 0, value: number = 0) {
+      this.id = nanoid(10);
+      this.message = message;
+      this.player_id = player_id;
       this.timestamp = Date.now();
-      this.type = 'treasure_hide';
-      this.player = null;
-      this.treasure = null;
-      this.island = null;
-      this.value = 0;
+      this.before = before;
+      this.after = after;
+      this.value = value;
     }
   }
 
@@ -134,6 +130,7 @@ export interface SyncErrorMessage extends BroadcastMessage {
 export interface FullSyncData {
   islands: IslandObject[];
   players: PlayerObject[];
+  events: EventObject[];
 }
 
 export interface SyncMessage extends BroadcastMessage {
@@ -149,6 +146,11 @@ export interface IslandSyncMessage extends BroadcastMessage {
 export interface PlayerSyncMessage extends BroadcastMessage {
   type: "playersync";
   data: PlayerObject;
+}
+
+export interface EventSyncMessage extends BroadcastMessage {
+  type: "eventsync";
+  data: EventObject;
 }
 
 export interface PartialSyncMessage extends BroadcastMessage {

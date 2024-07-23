@@ -54,9 +54,11 @@ import {
     TreasureObject, 
     IslandObject, 
     SeekerObject, 
+    EventObject,
     BroadcastMessage, 
     FullSyncData,
     SyncMessage,
+    EventSyncMessage,
     IslandSyncMessage,
     PlayerSyncMessage,
     PartialSyncMessage,
@@ -93,6 +95,7 @@ function shuffle(array: any[]) {
 interface GameContextType {
     players: PlayerObject[];
     islands: IslandObject[];
+    events: EventObject[];
     selectedTreasures: TreasureObject[];
     selectedSeekers: SeekerObject[];
     activePlayer: PlayerObject;
@@ -110,6 +113,7 @@ interface GameContextType {
     updateIslandMode: (islandId: string, mode: 'hide' | 'seek') => void;
     toggleIslandMode: (islandId: string) => void;
     selectSeeker: (seekerId: string) => void;
+    selectAllPlayerSeekers: () => void;
     deselectSeeker: (seekerId: string) => void;
     clearSelectedSeekers: () => void;
     addSelectedSeekersToIsland: (islandId: string) => void;
@@ -121,6 +125,7 @@ interface GameContextType {
 const GameContext = React.createContext<GameContextType>({
     players: [],
     islands: [],
+    events: [],
     selectedTreasures: [],
     selectedSeekers: [],
     activePlayer: new PlayerObject(''),
@@ -138,6 +143,7 @@ const GameContext = React.createContext<GameContextType>({
     updateIslandMode: () => {},
     toggleIslandMode: () => {},
     selectSeeker: () => {},
+    selectAllPlayerSeekers: () => {},
     deselectSeeker: () => {},
     clearSelectedSeekers: () => {},
     addSelectedSeekersToIsland: () => {},
@@ -173,6 +179,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     const [players, setPlayers] = useState<PlayerObject[]>([]);
     const [islands, setIslands] = useState<IslandObject[]>([]);
+    const [events, setEvents] = useState<EventObject[]>([]);
     const [madeNewTreasure, setMadeNewTreasure] = useState(false);
     const [admin, setAdmin] = useState(false);
 
@@ -197,6 +204,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             const data = message.data as FullSyncData
             setPlayers(data.players);
             setIslands(data.islands.map(i => {const io = new IslandObject(i.name, i.mode, i.expiration); io.id = i.id; io.seekers = i.seekers; io.treasures = i.treasures; io.balance = i.balance; return io}));
+            setEvents(data.events as EventObject[]);
           }
           // after that, the server will send updates as they arrive
           if (message.type === "islandsync") {
@@ -216,6 +224,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             player.inventory = player_data.inventory;
             player.balance = player_data.balance;
             setPlayers(prev => prev.map(p => p.id === player.id ? player : p))
+          }
+          if (message.type === "eventsync") {
+            const event_data = (message as EventSyncMessage).data
+            const event = new EventObject(event_data.message, event_data.player_id, event_data.before, event_data.after, event_data.value);
+            setEvents(prev => [...prev?.filter(e => e.id !== event.id) || [], event]);
           }
           if (message.type === "partialsync") {
             const partial = (message as PartialSyncMessage).data
@@ -237,6 +250,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     island.balance = island_data.balance; 
 
                     setIslands(prev => prev.map(i => i.id === island.id ? island : i))
+                }
+            }
+            if (partial.events) {
+                for (const event_data of partial.events) {
+                    const event = new EventObject(event_data.message, event_data.player_id, event_data.before, event_data.after, event_data.value);
+                    setEvents(prev => [...prev?.filter(e => e.id !== event.id) || [], event]);
                 }
             }
           }
@@ -302,8 +321,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const updateActivePlayer = (playerId: string) => {
         const player = players.find(p => p.id === playerId);
         if (player) {
+          setSelectedTreasures([]);
           setActivePlayer(player);
-          clearSelectedTreasures();
+          
         }
       }
     
@@ -355,6 +375,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setSelectedSeekers(prev => [...prev, seeker]);
         }
         console.log(selectedSeekers);
+      }
+
+      const selectAllPlayerSeekers = () => {
+        setSelectedSeekers(activePlayer.seekers);
       }
 
       const deselectSeeker = (seekerId: string) => {
@@ -542,6 +566,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             <GameContext.Provider value={{
                 players,
                 islands,
+                events,
                 selectedTreasures,
                 selectedSeekers,
                 activePlayer,
@@ -559,6 +584,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 updateIslandMode,
                 toggleIslandMode,
                 selectSeeker,
+                selectAllPlayerSeekers,
                 deselectSeeker,
                 clearSelectedSeekers,
                 addSelectedSeekersToIsland,
