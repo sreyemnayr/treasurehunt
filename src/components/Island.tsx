@@ -247,7 +247,7 @@ const Island: React.FC<IslandProps> = ({ island }) => {
                 
 
                 return (
-                    <div key={super_index} className={`${cols > hCols.length ? 'h-8' : hCols[cols - 1]} aspect-square p-0 m-0 ${backgroundTile(cols+2, super_index, treasure, seeker)} bg-cover bg-opacity-100  ${center ? 'border-[1px] border-amber-800 border-opacity-5' : ''}`}>
+                    <div key={super_index} className={`${cols > hCols.length ? hCols[hCols.length-1] : hCols[cols - 1]} aspect-square p-0 m-0 ${backgroundTile(cols+2, super_index, treasure, seeker)} bg-cover bg-opacity-100  ${center ? 'border-[1px] border-amber-800 border-opacity-5' : ''}`}>
                         <div
                             onMouseEnter={() => setShowPreview(treasure || seeker ? 0 : index)}
                             onMouseLeave={() => setShowPreview(-1)}
