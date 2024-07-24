@@ -286,7 +286,7 @@ const Island: React.FC<IslandProps> = ({ island }) => {
         )}
         {island.treasures.length > 0 && (
             <div className="absolute flex flex-col items-center justify-center p-1 text-xs font-bold text-white bg-lime-500 border-2 border-lime-100 rounded-full -bottom-2 left-1/2 transform -translate-x-1/2 dark:border-gray-900">
-                Closes <Timer deadline={island.expiration} />
+                Closes <Timer deadline={island.expiration} simple />
             </div>
                     )}
                    
