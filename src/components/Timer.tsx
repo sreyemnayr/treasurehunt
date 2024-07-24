@@ -6,7 +6,7 @@ const MINUTE = SECOND * 60;
 const HOUR = MINUTE * 60;
 const DAY = HOUR * 24;
 
-export const Timer = ({ deadline = (new Date()).getMilliseconds(), className = "" }) => {
+export const Timer = ({ deadline = (new Date()).getMilliseconds(), className = "", simple = false }) => {
     // const parsedDeadline = useMemo(() => Date.parse(deadline), [deadline]);
     const [time, setTime] = useState(deadline - Date.now());
     const [timeString, setTimeString] = useState('');
@@ -21,12 +21,12 @@ export const Timer = ({ deadline = (new Date()).getMilliseconds(), className = "
     }, []);
 
     useEffect(() => {
-        const ts = intlFormatDistance(deadline, addDays(new Date(), 2), {style: 'narrow'})
+        const ts = intlFormatDistance(deadline, new Date(), {style: 'narrow'})
 
-        if (ts.includes("yesterday")) {
+        if (!simple && ts.includes("yesterday")) {
             setTimeString(`${format(deadline, "h':'mm")} yesterday`);
             
-        } else if(ts.includes("d ago")){
+        } else if(!simple && ts.includes("d ago")){
             setTimeString(`${format(deadline, `h':'mm BBBBB EEEE`)}`);
         } else {
             

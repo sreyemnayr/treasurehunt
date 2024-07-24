@@ -30,7 +30,10 @@ const hCols = [
     "h-8",
     "h-7",
     "h-6",
-    "h-5"
+    "h-5",
+    "h-4",
+    "h-3",
+    "h-2",
 ]
 
 // For tailwindcss, these need to exist as hard code somewhere
@@ -223,10 +226,6 @@ const Island: React.FC<IslandProps> = ({ island }) => {
 
   return (
     <div className="flex flex-col justify-start items-center">
-        
-        {/* <h3 className="text-2xl font-bold">{island.name}</h3> */}
-        {offset}    
-        
         <div className="relative">  
         <div className={`grid grid-cols-${cols+2} gap-0 p-0 `}>
             {Array.from({ length: (cols+2)**2 }).map((_, super_index) => {
