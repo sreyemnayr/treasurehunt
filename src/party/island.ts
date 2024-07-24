@@ -18,7 +18,8 @@ import {
   AddTreasuresToIslandMessage,
   UpdateIslandModeMessage,
   AddSeekersToIslandMessage,
-  ResolveIslandMessage
+  ResolveIslandMessage,
+  UnwrapTreasuresMessage
 
 } from "@/lib/Types";
 
@@ -555,7 +556,7 @@ export default class Server implements Party.Server {
     console.log(message.includes("Created"))
     if(message !== ""){
       const event = new EventObject(message, player_id, starting_balance, player.balance)
-      if (message.includes("Created")){
+      if (message.includes("Created") || message.includes("Unwrapped")){
         event.value = -value
 
       } 
@@ -627,6 +628,26 @@ export default class Server implements Party.Server {
     return { players: [player], islands: [island] }
   }
 
+  async unwrapTreasures(player_id: string, treasure_ids: string[]) {
+    const player = this.players.find(player => player.id === player_id)
+    if (!player) {
+      return null
+    }
+    for (let i = 0; i < treasure_ids.length; i++) {
+      const treasure = player.inventory.find(treasure => treasure.id === treasure_ids[i])
+      if (treasure) {
+        if (treasure.location === "player"){
+          await this.adjustPlayerBalance(player_id, treasure.value, `Unwrapped treasure worth ${treasure.value}`)
+        }
+        
+      }
+    }
+    player.inventory = player.inventory.filter(t => !treasure_ids.includes(t.id))
+    await this.store(player)
+    await this.broadcastPlayer(player)
+    return { players: [player] }
+  }
+
   sendError(connection: Party.Connection, message: string) {
     return connection.send(
       JSON.stringify(<SyncErrorMessage>{
@@ -662,6 +683,16 @@ export default class Server implements Party.Server {
         await this.broadcastPartialSync(data)
       } else {
         return this.sendError(connection, `Player with id ${args.player_id} cannot move treasures with ids ${args.treasure_ids.join(', ')} to island with id ${args.island_id}`)
+      }
+    }
+
+    if (msg.method === "unwrapTreasures") {
+      const args = (msg as UnwrapTreasuresMessage).args
+      const data = await this.unwrapTreasures(args.player_id, args.treasure_ids)
+      if (data) {
+        await this.broadcastPartialSync(data)
+      } else {
+        return this.sendError(connection, `Player with id ${args.player_id} cannot unwrap treasures with ids ${args.treasure_ids.join(', ')}`)
       }
     }
 

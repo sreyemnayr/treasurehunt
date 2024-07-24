@@ -63,6 +63,7 @@ import {
     PlayerSyncMessage,
     PartialSyncMessage,
     CreateTreasureMessage,
+    UnwrapTreasuresMessage,
     AddTreasuresToIslandMessage,
     UpdateIslandModeMessage,
     AddSeekersToIslandMessage,
@@ -105,6 +106,7 @@ interface GameContextType {
     createTreasure: (name: string, value: number, owner: string) => void;
     updateActiveMode: (mode: 'hide' | 'seek' | 'inventory' | 'setup') => void;
     selectTreasure: (treasureId: string) => void;
+    unwrapTreasures: () => void;
     // removeTreasures: (treasureIds: string[]) => void;
     deselectTreasure: (treasureId: string) => void;
     clearSelectedTreasures: () => void;
@@ -135,6 +137,7 @@ const GameContext = React.createContext<GameContextType>({
     createTreasure: () => {},
     updateActiveMode: () => {},
     selectTreasure: () => {},
+    unwrapTreasures: () => {},
     // removeTreasures: () => {},
     deselectTreasure: () => {},
     clearSelectedTreasures: () => {},
@@ -180,7 +183,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const [players, setPlayers] = useState<PlayerObject[]>([]);
     const [islands, setIslands] = useState<IslandObject[]>([]);
     const [events, setEvents] = useState<EventObject[]>([]);
-    const [madeNewTreasure, setMadeNewTreasure] = useState(false);
+    // const [madeNewTreasure, setMadeNewTreasure] = useState(false);
     const [admin, setAdmin] = useState(false);
 
     const socket = usePartySocket({
@@ -285,9 +288,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             console.log("Player does not have enough balance")
             return
         }
-        setMadeNewTreasure(true);
+        // setMadeNewTreasure(true);
         socket.send(JSON.stringify({ method: "createTreasure", args: { player_id: owner, value}} as CreateTreasureMessage));
 
+    }
+
+    const unwrapTreasures = () => {
+        socket.send(JSON.stringify({ method: "unwrapTreasures", args: { player_id: activePlayer.id, treasure_ids: selectedTreasures.map(t => t.id) }} as UnwrapTreasuresMessage));
+        clearSelectedTreasures()
     }
 
     const selectTreasure = (treasureId: string) => {
@@ -535,10 +543,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             if (new_active_player && JSON.stringify(activePlayer) != JSON.stringify(new_active_player)) {
                 setActivePlayer(new_active_player)
             }
-            if (new_treasures && madeNewTreasure) {
-                setMadeNewTreasure(false);
+            if (new_treasures.length !== existing_treasures.length) {
                 setSelectedTreasures(prev => [...prev, ...new_treasures])
-                
             }
 
         }
@@ -576,6 +582,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 createTreasure,
                 updateActiveMode,
                 selectTreasure,
+                unwrapTreasures,
                 // removeTreasures,
                 deselectTreasure,
                 clearSelectedTreasures,

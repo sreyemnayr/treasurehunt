@@ -180,6 +180,14 @@ export interface AddTreasuresToIslandMessage extends Message {
   }
 }
 
+export interface UnwrapTreasuresMessage extends Message {
+  method: 'unwrapTreasures';
+  args: {
+    treasure_ids: string[];
+    player_id: string;
+  }
+}
+
 export interface AddSeekersToIslandMessage extends Message {
   method: 'addSeekersToIsland';
   args: {

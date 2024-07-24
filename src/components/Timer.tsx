@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { intlFormatDistance } from "date-fns";
+import { intlFormatDistance, format, addDays } from "date-fns";
 
 const SECOND = 1000;
 const MINUTE = SECOND * 60;
 const HOUR = MINUTE * 60;
 const DAY = HOUR * 24;
 
-export const Timer = ({ deadline = (new Date()).getMilliseconds() }) => {
+export const Timer = ({ deadline = (new Date()).getMilliseconds(), className = "" }) => {
     // const parsedDeadline = useMemo(() => Date.parse(deadline), [deadline]);
     const [time, setTime] = useState(deadline - Date.now());
     const [timeString, setTimeString] = useState('');
@@ -21,12 +21,26 @@ export const Timer = ({ deadline = (new Date()).getMilliseconds() }) => {
     }, []);
 
     useEffect(() => {
-        setTimeString(intlFormatDistance(deadline, new Date()));
+        const ts = intlFormatDistance(deadline, addDays(new Date(), 2), {style: 'narrow'})
+
+        if (ts.includes("yesterday")) {
+            setTimeString(`${format(deadline, "h':'mm")} yesterday`);
+            
+        } else if(ts.includes("d ago")){
+            setTimeString(`${format(deadline, `h':'mm BBBBB EEEE`)}`);
+        } else {
+            
+                setTimeString(ts)
+            
+        }
+
+        
+
     }, [time]);
 
     return (
         
-            <p>{timeString}</p>
+            <div className={className}>{timeString}</div>
         
     );
 };

@@ -13,7 +13,7 @@ interface TreasureBoxProps {
 
 const TreasureBox: React.FC<TreasureBoxProps> = ({ player }) => {
 
-    const { selectTreasure, deselectTreasure, selectedTreasures, activeMode, createTreasure, activePlayer } = useGameProvider();
+    const { selectTreasure, deselectTreasure, selectedTreasures, activeMode, createTreasure, activePlayer, unwrapTreasures } = useGameProvider();
 
     const [isOpen, setIsOpen] = useState(false)
     const [amt, setAmt] = useState(1)
@@ -119,6 +119,18 @@ const TreasureBox: React.FC<TreasureBoxProps> = ({ player }) => {
         
       )
       })}
+      { selectedTreasures.length > 0 && (
+        <div
+        className={`h-16 w-16 p-1 m-1 border rounded border-dashed border-red-500 hover:bg-red-500 hover:text-white`}
+        onClick={() => {
+          // createTreasure("Wrap", Math.floor(Math.random() * (99999 - 9999) + 9999), player.id);
+          unwrapTreasures()
+        }}
+        >
+          Unwrap
+        </div>
+      )}
+      
     </div>
     
   );

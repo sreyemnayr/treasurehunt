@@ -27,7 +27,7 @@ export const PlayersData = () => {
                 <p>Seekers: {player.seekers.length}</p>
                 <p>Seekers Deployed: {player.seekers.filter((seeker) => seeker.location == "island").length}</p>
                 
-                <div className="overflow-y-auto max-h-60 divide-y">
+                <div className="overflow-y-auto overflow-x-hidden max-h-60 divide-y">
                 {events && events.length > 0 && events.filter((event) => event.player_id === player.id).sort((a, b) => b.timestamp - a.timestamp).map((event) => {
                     console.log("event", event)
                     const difference = (event.after - event.before) + event.value;
@@ -38,7 +38,7 @@ export const PlayersData = () => {
                         <div className="grid grid-cols-4 justify-between">
                             
                             <div className="col-span-2">
-                            <Timer deadline={event.timestamp} />
+                            <Timer deadline={event.timestamp} className="text-[0.4rem] italic" />
                             </div>
                             <div>
                             {event.before !== event.after && (`${event.before} ->`)}
