@@ -212,8 +212,12 @@ const Island: React.FC<IslandProps> = ({ island }) => {
     const [cols, setCols] = useState(1)
 
     useEffect(()=>{
-        const count = island.treasures.length + (island.mode === 'hide' ? selectedTreasures.length : 0);
-        setCols(Math.ceil(Math.sqrt(count)) + 1);
+        if(island.mode === "seek"){
+            setCols(Math.ceil(Math.sqrt(island.size)));
+        } else {
+            const count = island.treasures.length + (island.mode === 'hide' ? selectedTreasures.length : 0);
+            setCols(Math.sqrt((Math.ceil(Math.sqrt(count)) + 1) ** 2));
+        }
     }, [island.size, selectedTreasures.length, island.treasures.length, island.mode])
 
     useEffect(() => {

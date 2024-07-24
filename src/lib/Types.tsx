@@ -80,7 +80,7 @@ export class IslandObject {
   
     get size(): number {
       const count = this.treasures.length;
-      return ((Math.ceil(Math.sqrt(count)) + 1) + 1) ** 2;
+      return (Math.ceil(Math.sqrt(count)) + 1) ** 2;
     }
 
     get remaining_plots(): number {
