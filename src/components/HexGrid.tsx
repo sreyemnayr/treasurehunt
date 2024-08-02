@@ -5,27 +5,49 @@ import Panzoom from '@panzoom/panzoom'
 import { makePoints, hilbert, rot } from '../lib/util';
 
 const map_terrain_urls = [
+    "/img/terrain/water.png",
     "/img/terrain/city.png",
     "/img/terrain/sand.png",
     "/img/terrain/grass.png",
     "/img/terrain/mountain.png",
     "/img/terrain/forest.png",
-    "/img/terrain/water.png",
+    
 ]
 
 const colors = [
+    "#57b2f1",
     "#050505",
     "#e99400",
     "#4de900",
     "#7900e9",
     "#055529",
-    "#57b2f1",
 ]
 
 
 const ownership: number[] = [5550];
 
-const terrains = Array.from({length: 10000}, () => (Math.floor(Math.random() * map_terrain_urls.length)));
+const terrains: number[] = []
+terrains.push(0)
+
+for(let i = 0; i < 9999; i++) {
+    if(Math.floor(Math.random() * 100) < 70) {
+        if(i > 99){
+            if (Math.floor(Math.random() * 100) < 80) {
+                if(Math.floor(i/100) % 2 == 0) {
+                    terrains.push(terrains[i-99])
+                } else {
+                    terrains.push(terrains[i-100])
+                }
+            } else {
+                terrains.push(terrains[i])
+            }
+        } else {
+            terrains.push(terrains[i])
+        }
+    } else {
+        terrains.push(Math.floor(Math.random() * map_terrain_urls.length));
+    }
+}
 
 const HexGrid = () => {
 
@@ -34,10 +56,6 @@ const HexGrid = () => {
     const [width, setWidth] = useState<number>(0);
     const [height, setHeight] = useState<number>(0);
     const [hexRadius, setHexRadius] = useState<number>(0);
-    const [startX, setStartX] = useState<number>(0);
-    const [startY, setStartY] = useState<number>(0);
-    const [mapRows, setMapRows] = useState<number>(0);
-    const [mapCols, setMapCols] = useState<number>(0);
     const [didZoom, setDidZoom] = useState<boolean>(false);
 
     useEffect(() => {
@@ -293,6 +311,7 @@ const HexGrid = () => {
             animate: true,
             duration: 1000,
             maxScale: 16,
+            
         
         // onTouch: function(e: TouchEvent) {
         //     // `e` - is current touch event.
@@ -305,7 +324,7 @@ const HexGrid = () => {
         // bounds: true,
         // boundsPadding: 1,
         setTransform: (_: any, { scale, x, y }: { scale: number, x: number, y: number }) => {
-            instance?.setStyle('transform', `perspective(10rem) rotateX(60deg) rotateY(-3deg) rotateZ(11deg) scale(${scale}) translate(${x}px, ${y}px)`)
+            instance?.setStyle('transform', `perspective(14rem) rotateX(60deg) rotateY(3deg) rotateZ(-3deg) scale(${scale}) translate(${x}px, ${y}px)`)
           }
         }) : null;
         if (instance) {
