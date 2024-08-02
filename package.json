@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.1.2",
+    "@panzoom/panzoom": "^4.5.1",
     "d3": "^7.9.0",
     "d3-dispatch": "^3.0.1",
     "d3-drag": "^3.0.0",
@@ -24,7 +25,6 @@
     "nanoid": "^5.0.7",
     "next": "14.2.5",
     "next-auth": "^4.24.7",
-    "panzoom": "^9.4.3",
     "partysocket": "1.0.1",
     "react": "^18",
     "react-dnd": "^16.0.1",

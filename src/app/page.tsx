@@ -18,7 +18,7 @@ export default function Home() {
       <main className="flex min-h-screen flex-col items-center bg-black">
       <Nav />
       <Cursors />
-      <div className="z-10 w-full max-w-5xl h-screen flex-1 items-stretch font-mono text-sm lg:flex">
+      <div className="z-10 w-full h-screen flex-1 items-stretch font-mono text-sm lg:flex">
        
         <HexGrid />
       </div>

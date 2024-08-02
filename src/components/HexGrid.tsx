@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef} from 'react';
 import * as d3 from 'd3';
 import { hexbin } from 'd3-hexbin';
-import panzoom from 'panzoom';
+import Panzoom from '@panzoom/panzoom'
 import { makePoints, hilbert, rot } from '../lib/util';
 
 const map_terrain_urls = [
@@ -23,7 +23,7 @@ const colors = [
 ]
 
 
-const ownership: number[] = [10, 11, 100, 101, 102, 103, 1000];
+const ownership: number[] = [5550];
 
 const terrains = Array.from({length: 10000}, () => (Math.floor(Math.random() * map_terrain_urls.length)));
 
@@ -222,7 +222,7 @@ const HexGrid = () => {
         .attr("d", function (d) {
             return "M" + d.x + "," + d.y + d3hexbin.hexagon(hexRadius*1.98);
         })
-        .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+        .attr("transform", function(d) { return `translate(${d.x},${d.y})`; })
         .attr("stroke", function (d,i) {
             if(ownership.includes(i)) {
             //return "#000";
@@ -289,19 +289,27 @@ const HexGrid = () => {
         
         
         
-        var instance = vector.node() ? panzoom(vector.node() as SVGElement , {
-        onTouch: function(e) {
-            // `e` - is current touch event.
-            console.log("touch");
-            mover(e);
-            mclick(e);
-            mout(e);
-            return true; // tells the library to not preventDefault.
-        },
-        bounds: true,
-        boundsPadding: 1,
+        var instance = vector.node() ? Panzoom(vector.node() as SVGElement , {
+            animate: true,
+            duration: 1000,
+            maxScale: 16,
+        
+        // onTouch: function(e: TouchEvent) {
+        //     // `e` - is current touch event.
+        //     console.log("touch");
+        //     mover(e);
+        //     mclick(e);
+        //     mout(e);
+        //     return true; // tells the library to not preventDefault.
+        // },
+        // bounds: true,
+        // boundsPadding: 1,
+        setTransform: (_: any, { scale, x, y }: { scale: number, x: number, y: number }) => {
+            instance?.setStyle('transform', `perspective(10rem) rotateX(60deg) rotateY(-3deg) rotateZ(11deg) scale(${scale}) translate(${x}px, ${y}px)`)
+          }
         }) : null;
         if (instance) {
+            console.log(center_x, center_y)
             let goToX, goToY;
             if(center_x.length > 0) {
             goToX = center_x.reduce((a, b) => a + b) / center_x.length;
@@ -312,13 +320,17 @@ const HexGrid = () => {
             } else { 
                 goToY = 50 
             }
+            console.log(goToX, goToY);
             
+            
+            (vector.node() as SVGElement)?.parentElement?.addEventListener('wheel', instance.zoomWithWheel, {passive: false})
+
             if(center_x && center_y) {
-                instance.smoothZoom(goToX*1.1, goToY*1.1, 6);
+                instance.zoom(16, {animate: true, focal: {x: goToX*1.1, y: goToY*1.1}});
             }
-            instance.on('transform', function(e: Event) {
-                setDidZoom(true);
-            });
+            
+
+            // svg.style("transform", "perspective(50em) rotateX(30deg) rotateY(7deg) rotateZ(-7deg)")
 
 
         }
@@ -333,9 +345,11 @@ const HexGrid = () => {
     }, [hexRadius, data.length]);
 
     return (
-        <svg id='sphere' className="w-full h-[calc(100vh_-_10rem)] flex-1 bg-amber-100" >
+        <div className='w-full h-[calc(100vh_-_10rem)] flex-1 bg-amber-100 overflow-hidden'>
+        <svg id='sphere' className="w-[110vw] h-[150vh] flex-1 bg-amber-100 " >
 
         </svg>
+        </div>
     );
 };
 
