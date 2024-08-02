@@ -302,7 +302,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         if (!activePlayer) return
         const treasure = activePlayer.inventory.find(t => t.id === treasureId);
         if (treasure) {
-            console.log(treasure)
+            // console.log(treasure)
             setSelectedTreasures(prev => [...prev, treasure]);
         }
       }
@@ -548,7 +548,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
 
         }
-        console.log(players)
+        // console.log(players)
         
       }, [JSON.stringify(players)])
 
@@ -563,7 +563,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
             
         }
-        console.log(islands)
+        // console.log(islands)
       }, [islands])
 
   return (
