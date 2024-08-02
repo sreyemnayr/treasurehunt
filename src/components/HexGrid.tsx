@@ -49,16 +49,18 @@ const HexGrid = () => {
         // d3.selectAll('.svg_fg_img_tmp_highlighted').attr("class", "svg_fg_img_tmp").transition().duration(200).style("opacity", 0);
         d3.selectAll('.hex_not_owned_highlighted')
           .attr("class", "hex_not_owned")
+          .style("stroke-width", 0.01)
             .transition()
             .duration(1000)
-            .style("fill-opacity", 0.1)
-            .style("stroke-width", 0.1);
+            .style("fill-opacity", 0.01)
+            
         d3.selectAll('.hex_owned_highlighted')
         .attr("class", "hex_owned")
+        .style("stroke-width", 0.05)
           .transition()
           .duration(1000)
-          .style("fill-opacity", 0.2)
-          .style("stroke-width", 0.5);
+          .style("fill-opacity", 0.03)
+          
       }
 
     
@@ -134,10 +136,10 @@ const HexGrid = () => {
               }
             return "hex_not_owned_highlighted";
           })
+          .style("stroke-width", 0.5)
           .transition()
           .duration(10)
-          .style("fill-opacity", 0.4)
-          .style("stroke-width", 0.5);
+          .style("fill-opacity", 0.05)
     
       }
     
@@ -233,7 +235,7 @@ const HexGrid = () => {
             }
             }*/
         // return "#fff";
-        return colors[terrains[i]] + "0a";
+        return colors[terrains[i]] + "aa";
         })
         .attr("class", function (d,i) {
         if(ownership.includes(i)) {
@@ -253,7 +255,7 @@ const HexGrid = () => {
         .attr("stroke-width", function (d, i) {
             if(ownership.includes(i)) {
             //return "#000";
-            return 0.5;
+            return 0.05;
             
             }
             /*
@@ -264,7 +266,7 @@ const HexGrid = () => {
             }
             }*/
         // return "#fff";
-        return 0.1;
+        return 0.01;
         })
         .style("fill", function (d,i) {
         return colors[terrains[i]] + "aa";
@@ -272,9 +274,9 @@ const HexGrid = () => {
         .style("fill-opacity", function(d,i) {
         if(ownership.includes(i)) {
             //return "#000";
-            return 0.2;
+            return 0.05;
             }
-        return 0.1;
+        return 0.01;
         })
         .on("mouseover", mover)
         .on("mouseout", mout)
