@@ -9,6 +9,8 @@ const map_terrain_urls = [
     "/img/terrain/sand.png",
     "/img/terrain/grass.png",
     "/img/terrain/mountain.png",
+    "/img/terrain/forest.png",
+    "/img/terrain/water.png",
 ]
 
 const colors = [
@@ -16,6 +18,8 @@ const colors = [
     "#e99400",
     "#4de900",
     "#7900e9",
+    "#055529",
+    "#57b2f1",
 ]
 
 
